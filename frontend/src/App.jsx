@@ -1,64 +1,78 @@
-import React, { useEffect } from 'react'
-import './App.css'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import Home from './components/Home'
-import Login from './components/Login'
-import SignUp from './components/SignUp'
-import Onboarding from './components/Onboarding'
-import { useAuth } from './context/AuthContext'
+import React from "react";
+import "./App.css";
+import {
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
+import Home from "./components/Home";
+import Login from "./components/auth/Login";
+import SignUp from "./components/auth/SignUp";
+import Dashboard from "./components/Dashboard";
+import Onboarding from "./components/auth/Onboarding";
+import Profile from "./components/auth/Profile";
 
-function App() {
-    const { user, hasCompletedOnboarding, loading } = useAuth();
-    const navigate = useNavigate();
+const App = () => {
+  const { user, hasCompletedOnboarding, loading } = useAuth();
 
-    useEffect(() => {
-        if (!loading) {
-            if (user) {
-                if (hasCompletedOnboarding) {
-                    navigate('/');
-                } else {
-                    navigate('/onboarding');
-                }
-            } else {
-                navigate('/login');
-            }
-        }
-    }, [user, hasCompletedOnboarding, loading, navigate]);
-
-    if (loading) {
-        return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
-    }
-
+  if (loading) {
     return (
-        <div data-theme="corporate" className='p-4 h-screen flex items-center justify-center bg-base-200'>
-            <Routes>
-                <Route path='/' element={
-                    user ? (
-                        hasCompletedOnboarding ? <Home /> : <Navigate to="/onboarding" />
-                    ) : (
-                        <Navigate to="/login" />
-                    )
-                } />
-                <Route path='/login' element={
-                    user ? (
-                        hasCompletedOnboarding ? <Navigate to="/" /> : <Navigate to="/onboarding" />
-                    ) : (
-                        <Login />
-                    )
-                } />
-                <Route path='/signup' element={
-                    user ? (
-                        hasCompletedOnboarding ? <Navigate to="/" /> : <Navigate to="/onboarding" />
-                    ) : (
-                        <SignUp />
-                    )
-                } />
-                <Route path='/onboarding' element={
-                    user ? <Onboarding /> : <Navigate to="/login" />
-                } />
-            </Routes>
-        </div>
-    )
-}
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="loading loading-spinner loading-lg text-primary"></div>
+      </div>
+    );
+  }
 
-export default App
+  return (
+    <div data-theme="corporate">
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Home />} />
+        <Route
+          path="/login"
+          element={user ? <Navigate to="/dashboard" /> : <Login />}
+        />
+        <Route
+          path="/signup"
+          element={user ? <Navigate to="/dashboard" /> : <SignUp />}
+        />
+
+        {/* Protected Routes */}
+        <Route
+        path="/dashboard"
+        element={
+            loading || hasCompletedOnboarding === null ? ( // wait until status is loaded
+            <div className="flex justify-center items-center min-h-screen">Loading...</div>
+            ) : !user ? (
+            <Navigate to="/login" />
+            ) : !hasCompletedOnboarding ? (
+            <Navigate to="/onboarding" />
+            ) : (
+            <Dashboard />
+            )
+        }
+        />
+
+        <Route
+          path="/profile"
+          element={user ? <Profile /> : <Navigate to="/" />}
+        />
+        <Route
+          path="/onboarding"
+          element={
+            !user ? (
+              <Navigate to="/login" />
+            ) : hasCompletedOnboarding ? (
+              <Navigate to="/dashboard" />
+            ) : (
+              <Onboarding />
+            )
+          }
+        />
+      </Routes>
+    </div>
+  );
+};
+
+export default App;

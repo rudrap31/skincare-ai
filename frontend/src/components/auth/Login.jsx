@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import toast from 'react-hot-toast';
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
+import { Link } from "react-router-dom";
+import { RxHome } from "react-icons/rx";
+import GradientBackground from "../GradientBackground";
+
 
 const Login = () => {
     const [email, setEmail] = useState("");
@@ -19,7 +23,12 @@ const Login = () => {
     };
 
     return (
-        <div className="card flex flex-col items-center justify-center min-w-96 mx-auto bg-base-100">
+        <div className="relative z-0 p-4 h-screen flex items-center  justify-center">
+            <GradientBackground/>
+
+            <Link to="/" className="absolute top-0 right-0 p-12 text-3xl hover:text-purple-400 transition colours duration-400"><RxHome />
+            </Link>
+        <div className="card p-4 flex-col items-center justify-center max-w-96 mx-auto bg-base-100">
             <div className="w-full p-6 rounded-lg">
                 <h1 className="text-3xl font-semibold text-center text-base-content">Login</h1>
                 <form onSubmit={handleLogin}>
@@ -49,9 +58,9 @@ const Login = () => {
                         />
                     </div>
 
-                    <a href="/signup" className='text-sm hover:underline hover:text-blue-600 mt-5 inline-block'>
+                    <Link to="/signup" className='text-sm hover:underline hover:text-blue-600 mt-5 inline-block'>
                         Don't have an account?
-                    </a>
+                    </Link>
 
                     <div>
                         <button type="submit" className="btn btn-block btn-sm mt-2 bg-primary">
@@ -61,6 +70,7 @@ const Login = () => {
                 </form>
             </div>
         </div>
+    </div>
     );
 };
 

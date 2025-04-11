@@ -1,7 +1,10 @@
 import React, { useState } from "react";
-import { supabase } from "../supabase/supabase.js";
+import { supabase } from "../../supabase/supabase.js";
 import toast from 'react-hot-toast';
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { Link } from "react-router-dom";
+import { RxHome } from "react-icons/rx";
+import GradientBackground from "../GradientBackground.jsx";
 
 const SignUp = () => {
   const { signUp } = useAuth();
@@ -40,19 +43,19 @@ const SignUp = () => {
       const { data, error } = await signUp({ email, password });
       if (error) throw error;
 
-      // Create a profile with default values
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            user_id: data.user.id,
-            name: "NULL",
-            skin_type: "NULL",
-            skin_concerns: []
-          }
-        ]);
+    //   // Create a profile with default values
+    //   const { error: profileError } = await supabase
+    //     .from('profiles')
+    //     .insert([
+    //       {
+    //         user_id: data.user.id,
+    //         name: "NULL",
+    //         skin_type: "NULL",
+    //         skin_concerns: []
+    //       }
+    //     ]);
 
-      if (profileError) throw profileError;
+    //   if (profileError) throw profileError;
 
       toast.success("Sign-up successful! Check your email for confirmation.");
     } catch (error) {
@@ -61,6 +64,10 @@ const SignUp = () => {
   };
 
   return (
+    <div className="relative z-0 p-4 h-screen flex items-center justify-center">
+        <GradientBackground />
+        <Link to="/" className="absolute top-0 right-0 p-12 text-3xl hover:text-purple-400 transition colours duration-400"><RxHome />
+        </Link>
     <div className="card flex flex-col items-center justify-center min-w-96 mx-auto bg-base-100">
       <div className="w-full p-6 rounded-lg">
         <h1 className="text-3xl font-semibold text-center text-base-content">
@@ -110,11 +117,11 @@ const SignUp = () => {
             />
           </div>
 
-          <a
-            href="/login"
+          <Link
+            to="/login"
             className="text-sm hover:underline hover:text-blue-600 mt-5 inline-block">
             Already have an account?
-          </a>
+          </Link>
 
           <div>
             <button type="submit" className="btn btn-block btn-sm mt-2 bg-primary">
@@ -123,6 +130,7 @@ const SignUp = () => {
           </div>
         </form>
       </div>
+    </div>
     </div>
   );
 };

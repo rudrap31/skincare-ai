@@ -1,17 +1,16 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../supabase/supabase';
-import { useNavigate } from 'react-router-dom';
+import { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "../supabase/supabase";
+import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext({});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
-  const navigate = useNavigate();
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(null);
+  const [onboardingStep, setOnboardingStep] = useState(1);
 
   useEffect(() => {
-    // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -20,8 +19,9 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     });
 
-    // Listen for changes on auth state (sign in, sign out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
         checkOnboardingStatus(session.user.id);
@@ -35,22 +35,35 @@ export const AuthProvider = ({ children }) => {
   const checkOnboardingStatus = async (userId) => {
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('name, skin_type, skin_concerns')
-        .eq('user_id', userId)
+        .from("profiles")
+        .select("name, skin_type, skin_concerns")
+        .eq("user_id", userId)
         .single();
 
       if (error) throw error;
 
-      const isComplete = data.name !== "NULL" && 
-                        data.skin_type !== "NULL" && 
-                        Array.isArray(data.skin_concerns) && 
-                        data.skin_concerns.length > 0;
+      setUser((prevUser) => ({
+        ...prevUser,
+        name: data.name,
+      }));
 
-      setHasCompletedOnboarding(isComplete);
+      if (!data.name || data.name === "NULL") {
+        setOnboardingStep(1);
+        setHasCompletedOnboarding(false);
+      } else if (!data.skin_type || data.skin_type === "NULL") {
+        setOnboardingStep(2);
+        setHasCompletedOnboarding(false);
+      } else if (!Array.isArray(data.skin_concerns) || data.skin_concerns.length === 0) {
+        setOnboardingStep(3);
+        setHasCompletedOnboarding(false);
+      } else {
+        setOnboardingStep(4);
+        setHasCompletedOnboarding(true);
+      }
     } catch (error) {
-      console.error('Error checking onboarding status:', error);
+      console.error("Error checking onboarding status:", error);
       setHasCompletedOnboarding(false);
+      setOnboardingStep(1);
     }
   };
 
@@ -65,9 +78,10 @@ export const AuthProvider = ({ children }) => {
     signIn: (data) => supabase.auth.signInWithPassword(data),
     signOut: () => supabase.auth.signOut(),
     user,
-    hasCompletedOnboarding,
     loading,
-    refreshOnboardingStatus
+    hasCompletedOnboarding,
+    onboardingStep,
+    refreshOnboardingStatus,
   };
 
   return (
@@ -79,4 +93,4 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   return useContext(AuthContext);
-}; 
+};
