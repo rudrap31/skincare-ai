@@ -15,7 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera"
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.anonymous.skincareai"
     },
@@ -35,10 +36,13 @@
     },
     "extra": {
       "EXPO_PUBLIC_SUPABASE_URL": "https://nedoihitthkzpspfbcul.supabase.co",
-      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lZG9paGl0dGhrenBzcGZiY3VsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMzODI0NDQsImV4cCI6MjA1ODk1ODQ0NH0.4iPZ_YLf3Qqvr0zeRR73G-t6CJKTf35VQGgf5G2N9V4"
+      "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5lZG9paGl0dGhrenBzcGZiY3VsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMzODI0NDQsImV4cCI6MjA1ODk1ODQ0NH0.4iPZ_YLf3Qqvr0zeRR73G-t6CJKTf35VQGgf5G2N9V4",
+      "eas": {
+        "projectId": "f289c539-164d-4d1c-9d0d-df676563f5f3"
+      }
     },
     "plugins": [
-        "react-native-vision-camera"
-      ]
+      "react-native-vision-camera"
+    ]
   }
 }
