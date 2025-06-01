@@ -7,6 +7,8 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import HomeScreen from '../screens/HomeScreen';
 import { ActivityIndicator, View } from 'react-native';
 import ProfileScreen from '../screens/ProfileScreen';
+import ScanResultsScreen from '../components/home/FaceResults';
+import ImagePickerExample from '../components/home/ImagePicker';
 
 const Stack = createNativeStackNavigator();
 
@@ -42,6 +44,8 @@ export default function AppNavigator() {
                     {/* Signed in and done onboarding */}
                     <Stack.Screen name="Home" component={HomeScreen} />
                     <Stack.Screen name="Profile" component={ProfileScreen} />
+                    <Stack.Screen name="ImagePicker" component={ImagePickerExample} />
+                    <Stack.Screen name="ScanResults" component={ScanResultsScreen} />
                 </>
             )}
         </Stack.Navigator>

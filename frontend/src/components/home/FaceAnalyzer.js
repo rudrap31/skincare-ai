@@ -4,16 +4,19 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
+  Image, 
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import GradientBackground from '../GradientBackground';
 import Navbar from '../Navbar';
+import { useNavigation } from '@react-navigation/native';
+import ImagePickerExample from './ImagePicker';
 
 const FaceAnalyzer = () => {
-  // Mock data - replace with real data from your state/API
+  // Mock data 
+  const navigation = useNavigation();
   const userName = "Sarah";
-  const hasRecentScan = false; // Change to true when user has scanned before
+  const hasRecentScan = false; // Change to true later with context
   
   const skinMetrics = [
     { name: 'Redness', value: 65, trend: 'up', color: '#8B5CF6' },
@@ -30,9 +33,15 @@ const FaceAnalyzer = () => {
     { id: 4, score: 74, date: new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)), imageUri: null },
   ];
 
-  const handleScanPress = () => {
+  const handleScanPress = async () => {
     // Handle face scan button press
     console.log('Starting face scan...');
+    
+        navigation.navigate('ImagePicker', {
+            scanImage: "https://www.shutterstock.com/image-photo/image-handsome-smiling-young-african-600nw-722913181.jpg",
+            scanResults: null
+        });
+    
   };
 
   const handleMetricPress = (metric) => {
