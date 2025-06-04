@@ -5,13 +5,7 @@ import { OpenAI } from 'openai';
 
 const router = express.Router();
 
-const rateProduct = async (req, res) => {
-    console.log('POST /api/product hit');
-    return res.status(400).json({ error: 'Missing UPC or user_id' });
-};
-
 router.post('/', async (req, res) => {
-    console.log("start");
     const supabase = createClient(
         process.env.SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -65,19 +59,27 @@ router.post('/', async (req, res) => {
         const checkPrompt = `Given the product name "${product_name}", is this a skincare product? Respond ONLY with JSON: { "is_skincare": true } or { "is_skincare": false }.`;
 
         const checkRes = await openai.chat.completions.create({
-        model: 'gpt-4.1',
-        messages: [{ role: 'user', content: checkPrompt }]
+            model: 'gpt-4.1',
+            messages: [{ role: 'user', content: checkPrompt }],
         });
 
         let isSkincare;
         try {
             isSkincare = JSON.parse(checkRes.choices[0].message.content.trim());
         } catch (e) {
-            return res.status(500).json({ error: 'Failed to parse OpenAI skincare check response' });
+            return res
+                .status(500)
+                .json({
+                    error: 'Failed to parse OpenAI skincare check response',
+                });
         }
 
         if (!isSkincare.is_skincare) {
-            return res.status(400).json({ error: 'This does not appear to be a skincare product' });
+            return res
+                .status(400)
+                .json({
+                    error: 'This does not appear to be a skincare product',
+                });
         }
 
         // Ask OpenAI for rating
@@ -112,34 +114,29 @@ router.post('/', async (req, res) => {
         try {
             parsed = JSON.parse(resultText);
         } catch (e) {
-            return res
-                .status(500)
-                .json({
-                    error: 'Failed to parse OpenAI response',
-                    raw: resultText,
-                });
+            return res.status(500).json({
+                error: 'Failed to parse OpenAI response',
+                raw: resultText,
+            });
         }
 
         // Save to Supabase
         const { data: insertedProduct, error: insertError } = await supabase
-        .from('scanned_products')
-        .insert({
-            user_id: user_id,
-            product: product_name,
-            brand: brand,
-            rating: parsed.rating,
-            summary: parsed.summary,
-            image: image_url,
-            pros: parsed.pros,
-            cons: parsed.cons,
-        })
-        .select()
-        .single(); 
-
+            .from('scanned_products')
+            .insert({
+                user_id: user_id,
+                product: product_name,
+                brand: brand,
+                rating: parsed.rating,
+                summary: parsed.summary,
+                image: image_url,
+                pros: parsed.pros,
+                cons: parsed.cons,
+            })
+            .select()
+            .single();
 
         if (insertError) throw insertError;
-        
-        console.log("done");
 
         res.status(200).json({
             success: true,
