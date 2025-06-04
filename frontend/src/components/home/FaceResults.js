@@ -34,20 +34,16 @@ const ScanResultsScreen = ({
 
     // Mock data structure - replace with your actual API response
     const defaultResults = {
-        scores: {
-            redness: { value: 75, label: 'Redness' },
-            hydration: { value: 82, label: 'Hydration' },
-            acne: { value: 68, label: 'Acne' },
-            overall: { value: 76, label: 'Overall' },
-        },
-        analysis:
-            'Your skin shows good hydration levels with some areas for improvement. The redness in your T-zone is within normal range, but consider using a gentle moisturizer with hyaluronic acid. Your overall skin health is improving - keep up the good routine!',
-        recommendations: [
-            'Use a gentle cleanser twice daily',
-            'Apply moisturizer with hyaluronic acid',
-            'Consider adding a vitamin C serum',
-            "Don't forget daily sunscreen",
-        ],
+        acne: 5,
+        analysis: "Your skin shows moderate redness, mostly around the cheeks and nose, which is consistent with your sensitive skin type. There are a few visible active acne spots and some lingering post-inflammatory marks and hyperpigmentation, mainly on the cheeks and jawline.",
+        hydration: 7,
+        overall: 6.2,
+        redness: 6.8,
+        tips: [
+            "Use a gentle, fragrance-free cleanser suitable for sensitive skin to avoid further irritation.",
+            "Incorporate a hydrating serum with glycerin or hyaluronic acid after cleansing.",
+            "Spot-treat acne with a mild product containing salicylic acid or benzoyl peroxide, used sparingly."
+        ]
     };
 
     const finalResults = results || defaultResults;
@@ -56,7 +52,7 @@ const ScanResultsScreen = ({
         // Animate progress bars on mount
         const animations = Object.keys(progressAnimations).map((key) =>
             Animated.timing(progressAnimations[key], {
-                toValue: finalResults.scores[key]?.value || 0,
+                toValue: finalResults[key] || 0,
                 duration: 1500,
                 delay: 200,
                 useNativeDriver: false,
@@ -72,14 +68,14 @@ const ScanResultsScreen = ({
         }
     };
 
-    const ScoreCard = ({ score, animatedValue }) => {
+    const ScoreCard = ({ score, label, animatedValue }) => {
         return (
             <View className=" flex-1 mx-2 bg-white/10 p-4 rounded-xl">
                 <Text className="text-white text-md font-medium mb-1">
-                    {score.label}
+                    {label}
                 </Text>
                 <Text className="text-white text-3xl font-bold mb-2">
-                    {score.value}
+                    {score}
                 </Text>
                 {/* Progress bar */}
                 <View className="w-full h-2 bg-gray-700 rounded-full">
@@ -92,9 +88,9 @@ const ScanResultsScreen = ({
                                 extrapolate: 'clamp',
                             }),
                             backgroundColor:
-                                score.value >= 80
+                                score >= 80
                                     ? '#10B981'
-                                    : score.value >= 60
+                                    : score >= 60
                                     ? '#F59E0B'
                                     : '#EF4444',
                         }}
@@ -150,22 +146,26 @@ const ScanResultsScreen = ({
                     <View className="bg-black/30 rounded-3xl p-6 w-full max-w-sm">
                         <View className="flex-row justify-between mb-4">
                             <ScoreCard
-                                score={finalResults.scores.redness}
+                                score={finalResults.redness}
+                                label="Redness"
                                 animatedValue={progressAnimations.redness}
                             />
 
                             <ScoreCard
-                                score={finalResults.scores.hydration}
+                                score={finalResults.hydration}
+                                label="Hydration"
                                 animatedValue={progressAnimations.hydration}
                             />
                         </View>
                         <View className="flex-row justify-between">
                             <ScoreCard
-                                score={finalResults.scores.acne}
+                                score={finalResults.acne}
+                                label="Acne"
                                 animatedValue={progressAnimations.acne}
                             />
                             <ScoreCard
-                                score={finalResults.scores.overall}
+                                score={finalResults.overall}
+                                label="Overall"
                                 animatedValue={progressAnimations.overall}
                             />
                         </View>
@@ -188,21 +188,21 @@ const ScanResultsScreen = ({
                         </Text>
 
                         {/* Recommendations */}
-                        {finalResults.recommendations &&
-                            finalResults.recommendations.length > 0 && (
+                        {finalResults.tips &&
+                            finalResults.tips.length > 0 && (
                                 <View>
                                     <Text className="text-white text-lg font-semibold mb-3">
                                         Recommendations:
                                     </Text>
-                                    {finalResults.recommendations.map(
-                                        (recommendation, index) => (
+                                    {finalResults.tips.map(
+                                        (tip, index) => (
                                             <View
                                                 key={index}
                                                 className="flex-row items-start mb-2"
                                             >
                                                 <View className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3" />
                                                 <Text className="text-gray-200 text-base flex-1">
-                                                    {recommendation}
+                                                    {tip}
                                                 </Text>
                                             </View>
                                         )
