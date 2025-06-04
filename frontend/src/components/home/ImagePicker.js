@@ -7,7 +7,7 @@ import {
     StatusBar,
     Dimensions,
     SafeAreaView,
-    ActivityIndicator
+    ActivityIndicator,
 } from 'react-native';
 import {
     Camera,
@@ -19,6 +19,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
 import { decode } from 'base64-arraybuffer';
+import { IP } from '../../Constants';
 
 const { width, height } = Dimensions.get('window');
 
@@ -27,9 +28,7 @@ const CameraScanScreen = ({ navigation, route }) => {
     const device = useCameraDevice('front');
     const { hasPermission, requestPermission } = useCameraPermission();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [analysisResult, setAnalysisResult] = useState(null);
     const { user } = useAuth();
-
 
     const [isActive, setIsActive] = useState(true);
 
@@ -69,92 +68,75 @@ const CameraScanScreen = ({ navigation, route }) => {
         try {
             setIsAnalyzing(true);
 
-        const fileName = `${Date.now()}_face_analysis.jpg`;
-        const filePath = `${user?.id}/${fileName}`;
+            const fileName = `${Date.now()}_face_analysis.jpg`;
+            const filePath = `${user?.id}/${fileName}`;
 
-        if (camera.current) {
-            const photo = await camera.current.takePhoto({
-                quality: 90,
-                skipMetadata: true,
-            });
-            console.log('Photo captured:', photo);
-
-            // Method 1: Use fetch + FileReader (no external dependencies)
-            const fileUri = `file://${photo.path}`;
-            const response = await fetch(fileUri);
-            const blob = await response.blob();
-            
-            // Convert blob to base64
-            const base64Data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64 = reader.result.split(',')[1]; // Remove data:image/jpeg;base64, prefix
-                    resolve(base64);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
-
-            console.log('Base64 data length:', base64Data.length);
-
-            // Convert base64 to ArrayBuffer using Supabase's method
-            const arrayBuffer = decode(base64Data);
-            console.log('ArrayBuffer size:', arrayBuffer.byteLength);
-
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('face-images')
-                .upload(filePath, arrayBuffer, {
-                    contentType: 'image/jpeg',
-                    cacheControl: '3600',
-                    upsert: false
+            if (camera.current) {
+                const photo = await camera.current.takePhoto({
+                    quality: 90,
+                    skipMetadata: true,
                 });
 
-            if (uploadError) {
-                console.error('Upload error:', uploadError);
-                throw new Error(`Failed to upload image: ${uploadError.message}`);
-            }
+                // Method 1: Use fetch + FileReader (no external dependencies)
+                const fileUri = `file://${photo.path}`;
+                const responsePhoto = await fetch(fileUri);
+                const blob = await responsePhoto.blob();
 
-                // Step 2: Call your backend API for analysis
-                // const response = await fetch('/api/analyze-face', {
-                //     method: 'POST',
-                //     headers: {
-                //         'Content-Type': 'application/json',
-                //     },
-                //     body: JSON.stringify({
-                //         img: uploadData.path, // This is the path in storage
-                //         user_id: user.id,
-                //     }),
-                // });
+                // Convert blob to base64
+                const base64Data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64 = reader.result.split(',')[1];
+                        resolve(base64);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
 
-                // if (!response.ok) {
-                //     throw new Error('Analysis failed');
-                // }
+                // Convert base64 to ArrayBuffer using Supabase's method
+                const arrayBuffer = decode(base64Data);
 
-                // const analysisData = await response.json();
+                const { data: uploadData, error: uploadError } =
+                    await supabase.storage
+                        .from('face-images')
+                        .upload(filePath, arrayBuffer, {
+                            contentType: 'image/jpeg',
+                            cacheControl: '3600',
+                            upsert: false,
+                        });
 
-                // Step 3: Display results and optionally save to local state
-                // setAnalysisResult(analysisData.result);
+                if (uploadError) {
+                    console.error('Upload error:', uploadError);
+                    throw new Error(
+                        `Failed to upload image: ${uploadError.message}`
+                    );
+                }
+
+                // Call backend API for analysis
+                const response = await fetch(`http://${IP}:5111/api/face`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        img: uploadData.path,
+                        user_id: user.id,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Analysis failed');
+                }
+
+                const analysisData = await response.json();
+                console.log(analysisData.result);
+                // Display results
+                setIsAnalyzing(false);
 
                 // Navigate to scan results with the captured image
                 navigation.navigate('ScanResults', {
                     scanImage: `file://${photo.path}`,
-                    // Add mock results or process the image here
-                    scanResults: {
-                        scores: {
-                            redness: { value: 75, label: 'Redness' },
-                            hydration: { value: 82, label: 'Hydration' },
-                            acne: { value: 68, label: 'Acne' },
-                            overall: { value: 76, label: 'Overall' },
-                        },
-                        analysis:
-                            'Analysis of your captured image shows good skin health with some areas for improvement.',
-                        recommendations: [
-                            'Use a gentle cleanser twice daily',
-                            'Apply moisturizer with hyaluronic acid',
-                            'Consider adding a vitamin C serum',
-                            "Don't forget daily sunscreen",
-                        ],
-                    },
+                    scanResults: analysisData.result,
                 });
             }
         } catch (error) {
@@ -175,22 +157,7 @@ const CameraScanScreen = ({ navigation, route }) => {
             if (!result.canceled) {
                 navigation.navigate('ScanResults', {
                     scanImage: result.assets[0].uri,
-                    scanResults: {
-                        scores: {
-                            redness: { value: 75, label: 'Redness' },
-                            hydration: { value: 82, label: 'Hydration' },
-                            acne: { value: 68, label: 'Acne' },
-                            overall: { value: 76, label: 'Overall' },
-                        },
-                        analysis:
-                            'Analysis of your selected image shows good skin health with some areas for improvement.',
-                        recommendations: [
-                            'Use a gentle cleanser twice daily',
-                            'Apply moisturizer with hyaluronic acid',
-                            'Consider adding a vitamin C serum',
-                            "Don't forget daily sunscreen",
-                        ],
-                    },
+                    scanResults: {},
                 });
             }
         } catch (error) {
@@ -201,20 +168,20 @@ const CameraScanScreen = ({ navigation, route }) => {
 
     const SimpleLoadingOverlay = ({ isVisible }) => {
         if (!isVisible) return null;
-    
+
         return (
             <View className="absolute inset-0 bg-black/50 flex-1 justify-center items-center z-50">
-              <View className="bg-white rounded-2xl p-8 mx-6 items-center shadow-lg">
-                <ActivityIndicator size="large" color="#007AFF" />
-                <Text className="text-lg font-semibold text-gray-800 mt-4 text-center">
-                  Analyzing your skin...
-                </Text>
-                <Text className="text-sm text-gray-500 mt-2 text-center">
-                  This may take a few moments
-                </Text>
-              </View>
+                <View className="bg-white rounded-2xl p-8 mx-6 items-center shadow-lg">
+                    <ActivityIndicator size="large" color="#007AFF" />
+                    <Text className="text-lg font-semibold text-gray-800 mt-4 text-center">
+                        Analyzing your skin...
+                    </Text>
+                    <Text className="text-sm text-gray-500 mt-2 text-center">
+                        This may take a few moments
+                    </Text>
+                </View>
             </View>
-          );
+        );
     };
 
     const handleClose = () => {
