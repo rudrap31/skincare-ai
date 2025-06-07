@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import GradientBackground from '../GradientBackground';
+import { getScoreColor } from '../../utils/helpers';
 
 const { width, height } = Dimensions.get('window');
 
@@ -88,11 +89,7 @@ const ScanResultsScreen = ({
                                 extrapolate: 'clamp',
                             }),
                             backgroundColor:
-                                score >= 80
-                                    ? '#10B981'
-                                    : score >= 60
-                                    ? '#F59E0B'
-                                    : '#EF4444',
+                                getScoreColor(score)
                         }}
                     />
                 </View>
