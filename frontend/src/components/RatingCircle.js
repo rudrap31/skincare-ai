@@ -1,58 +1,98 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Text, View } from 'react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
-
-const getRatingColor = (rating) => {
-    const hue = (rating / 10) * 130; // 0 (red) 130 (green)
-    return `hsl(${hue}, 80%, 40%)`;
-};
+import { getScoreColor } from '../utils/helpers';
 
 const RatingCircle = ({ size, rating }) => {
     const [displayedRating, setDisplayedRating] = useState(0);
+    const [fillValue, setFillValue] = useState(0);
+    const animationRef = useRef(null);
+    const startTimeRef = useRef(null);
+
+    const easeOutCubic = (t) => {
+        return 1 - Math.pow(1 - t, 3);
+    };
 
     useEffect(() => {
-        const duration = size * 5; 
-        const stepTime = 20;
-        const totalSteps = duration / stepTime;
-        let currentStep = 0;
+        if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current);
+        }
 
-        const interval = setInterval(() => {
-            currentStep += 1;
-            const newRating = (rating / totalSteps) * currentStep;
-            setDisplayedRating(Math.min(newRating, rating));
+        setDisplayedRating(0);
+        setFillValue(0);
+        startTimeRef.current = null;
 
-            if (currentStep >= totalSteps) {
-                clearInterval(interval);
+        const duration = 1200;
+        const targetFill = (rating / 10) * 100;
+
+        const animate = (currentTime) => {
+            if (!startTimeRef.current) {
+                startTimeRef.current = currentTime;
             }
-        }, stepTime);
 
-        return () => clearInterval(interval);
-    }, [rating]);
+            const elapsed = currentTime - startTimeRef.current;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            const easedProgress = easeOutCubic(progress);
+            
+            // Calculate current values
+            const currentRating = rating * easedProgress;
+            const currentFill = targetFill * easedProgress;
+            
+            setDisplayedRating(currentRating);
+            setFillValue(currentFill);
+
+            if (progress < 1) {
+                animationRef.current = requestAnimationFrame(animate);
+            } else {
+                setDisplayedRating(rating);
+                setFillValue(targetFill);
+            }
+        };
+
+        // Start animation with a small delay
+        const timeoutId = setTimeout(() => {
+            animationRef.current = requestAnimationFrame(animate);
+        }, 100);
+
+        return () => {
+            clearTimeout(timeoutId);
+            if (animationRef.current) {
+                cancelAnimationFrame(animationRef.current);
+            }
+        };
+    }, [rating, size]);
 
     return (
-        <View className="items-center my-4">
-            <AnimatedCircularProgress
-                size={size}
-                width={size / 10}
-                fill={(displayedRating / 10) * 100}
-                tintColor={getRatingColor(displayedRating)}
-                backgroundColor="#1f2937"
-                rotation={0}
-                lineCap="round"
-            >
-                {() => (
-                    <Text
-                        style={{
-                            color: getRatingColor(displayedRating),
-                            fontWeight: 'bold',
-                            fontSize: size / 10 + 10,
-                        }}
-                    >
-                        {displayedRating.toFixed(1)}{' '}
+        <AnimatedCircularProgress
+            size={size}
+            width={Math.max(4, size / 12)}
+            fill={fillValue}
+            tintColor={getScoreColor(displayedRating * 10)}
+            onAnimationComplete={() => {}}
+            backgroundColor="#000000"
+            rotation={0}
+            lineCap="round"
+            duration={0} // Disable built-in animation
+        >
+            {() => (
+                <View style={{
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    width: size * 0.6,
+                    height: size * 0.6,
+                }}>
+                    <Text style={{
+                        fontSize: Math.max(12, size / 4.5),
+                        fontWeight: 'bold',
+                        color: "#FFFFFF",
+                        textAlign: 'center',
+                    }}>
+                        {displayedRating.toFixed(1)}
                     </Text>
-                )}
-            </AnimatedCircularProgress>
-        </View>
+                </View>
+            )}
+        </AnimatedCircularProgress>
     );
 };
 
