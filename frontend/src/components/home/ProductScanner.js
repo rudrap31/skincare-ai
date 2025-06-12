@@ -16,6 +16,7 @@ import {
     useCodeScanner,
 } from 'react-native-vision-camera';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import GradientBackground from '../GradientBackground';
 import Navbar from '../Navbar';
 import { useUIStore } from '../../store/uiStore';
@@ -107,12 +108,11 @@ const ProductScanner = () => {
                 const { addProduct } = useScannedProductsStore.getState();
 
                 const json = await res.json();
-                if (json.success != 'true') {
+                if (json.success != true) {
                     setSelectedProduct(null);
-                    actionSheetRef.current?.show();
+                    sheetRef.current?.show();
                     setScanLoading(false);
                     setCameraOn(false);
-                    console.log('Scan result:', json);
                     return;
                 }
                 addProduct(json.data);
@@ -155,7 +155,7 @@ const ProductScanner = () => {
                 />
 
                 {/* Camera overlay */}
-                <View className="flex-1 bg-black/30">
+                <View className="flex-1 bg-black/10">
                     <TouchableOpacity
                         onPress={() => setCameraOn(false)}
                         className="absolute top-16 left-5 z-50"
@@ -217,7 +217,7 @@ const ProductScanner = () => {
                         </Text>
                         <TouchableOpacity
                             onPress={handleScanPress}
-                            className="bg-blue-500 px-5 py-3 rounded-full flex-row items-center gap-2 shadow-lg shadow-blue-500/30"
+                            className="bg-primary px-4 py-3 rounded-full flex-row items-center gap-2 shadow-lg shadow-blue-500/30"
                             activeOpacity={0.8}
                         >
                             <Ionicons
@@ -276,11 +276,14 @@ const ProductScanner = () => {
                                         className="flex-row p-4 items-center"
                                         activeOpacity={0.8}
                                     >
-                                        <Image
+                                        {product.image? (<Image
                                             source={{ uri: product.image }}
                                             className="w-16 h-16 rounded-xl mr-4"
                                             resizeMode="cover"
-                                        />
+                                        />) : (
+                                        <View className="w-16 h-16 bg-slate-300 rounded-xl mr-4 items-center justify-center">
+                                            <MaterialCommunityIcons name="hand-wash-outline" size={40} className="items-center justify-center"/> 
+                                        </View>)}
                                         <View className="flex-1 mr-4">
                                             <Text
                                                 className="text-white text-base font-semibold mb-1"
@@ -292,7 +295,7 @@ const ProductScanner = () => {
                                                 className="text-white/70 text-sm"
                                                 numberOfLines={1}
                                             >
-                                                Skincare Product
+                                                {product.brand}
                                             </Text>
                                         </View>
                                         <View className="items-center">
