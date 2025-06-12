@@ -23,7 +23,7 @@ const RatingCircle = ({ size, rating }) => {
         startTimeRef.current = null;
 
         const duration = 1200;
-        const targetFill = (rating / 10) * 100;
+        const targetFill = (rating / 100) * 100;
 
         const animate = (currentTime) => {
             if (!startTimeRef.current) {
@@ -32,13 +32,13 @@ const RatingCircle = ({ size, rating }) => {
 
             const elapsed = currentTime - startTimeRef.current;
             const progress = Math.min(elapsed / duration, 1);
-            
+
             const easedProgress = easeOutCubic(progress);
-            
+
             // Calculate current values
             const currentRating = rating * easedProgress;
             const currentFill = targetFill * easedProgress;
-            
+
             setDisplayedRating(currentRating);
             setFillValue(currentFill);
 
@@ -68,7 +68,7 @@ const RatingCircle = ({ size, rating }) => {
             size={size}
             width={Math.max(4, size / 12)}
             fill={fillValue}
-            tintColor={getScoreColor(displayedRating * 10)}
+            tintColor={getScoreColor(displayedRating)}
             onAnimationComplete={() => {}}
             backgroundColor="#000000"
             rotation={0}
@@ -76,19 +76,25 @@ const RatingCircle = ({ size, rating }) => {
             duration={0} // Disable built-in animation
         >
             {() => (
-                <View style={{
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    width: size * 0.6,
-                    height: size * 0.6,
-                }}>
-                    <Text style={{
-                        fontSize: Math.max(12, size / 4.5),
-                        fontWeight: 'bold',
-                        color: "#FFFFFF",
-                        textAlign: 'center',
-                    }}>
-                        {displayedRating.toFixed(1)}
+                <View className="justify-center items-center">
+                    <Text
+                        style={{
+                            fontSize: Math.max(12, size / 4.5),
+                            fontWeight: 'bold',
+                            color: '#FFFFFF',
+                            textAlign: 'center',
+                        }}
+                    >
+                        {displayedRating.toFixed(0)}%{'\n'}
+                        <Text
+                            style={{
+                                fontSize: Math.max(8, size / 10),
+                                fontWeight: '600',
+                                color: '#FFFFFF',
+                            }}
+                        >
+                            Match
+                        </Text>
                     </Text>
                 </View>
             )}
