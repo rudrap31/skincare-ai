@@ -1,8 +1,9 @@
 import React, { forwardRef } from 'react';
 import ActionSheet, { ScrollView, FlatList } from 'react-native-actions-sheet';
 import { useRef, useState, useImperativeHandle, useEffect } from 'react';
-import { Text, View, Image } from 'react-native';
+import { Text, View, Image, TouchableOpacity } from 'react-native';
 import RatingCircle from '../RatingCircle';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const ProductSheet = forwardRef(({ selectedProduct }, ref) => {
     const actionSheetRef = useRef(null);
@@ -28,9 +29,10 @@ const ProductSheet = forwardRef(({ selectedProduct }, ref) => {
     return (
         <ActionSheet
             ref={actionSheetRef}
-            snapPoints={[90, '50%']} // Adjust these snap points to fill the screen more
+            snapPoints={[75, 100]} // Adjust these snap points to fill the screen more
             drawUnderStatusBar={false}
             useBottomSafeAreaPadding
+            gestureEnabled={true}
             containerStyle={{
                 backgroundColor: '#1e1e1e', // Avoiding any background gaps
                 borderTopLeftRadius: 20, // Optional: To add rounded corners to the top
@@ -42,19 +44,22 @@ const ProductSheet = forwardRef(({ selectedProduct }, ref) => {
                 <ScrollView>
                     <View className="px-4 pt-6 bg-[#1e1e1e] rounded-t-2xl">
                         <View className="flex-row mb-5">
-                            <Image
+                            {selectedProduct.image? (<Image
                                 source={{ uri: selectedProduct.image }}
                                 className="w-56 h-56 rounded-2xl mr-4"
                                 resizeMode="cover"
-                            />
-                            <View className="flex-1 justify-between">
-                                <View className="items-start">
+                            />): (<View className="w-56 h-56 bg-slate-200 rounded-xl mr-4 items-center justify-center">
+                                <MaterialCommunityIcons name="hand-wash-outline" size={90} className="items-center justify-center"/> 
+                                <Text className=" text-center font-semibold text-gray-700 pt-4">Sorry, we couldn't find the image</Text>
+                            </View>)}
+                           
+                                <View className=" justify-center pl-3">
                                     <RatingCircle
-                                        size={90}
+                                        size={130}
                                         rating={selectedProduct.rating}
                                     />
                                 </View>
-                            </View>
+                            
                         </View>
                         <Text className="text-white text-xl font-bold mb-3">
                             {selectedProduct.product}
