@@ -5,6 +5,39 @@ import { OpenAI } from 'openai';
 
 const router = express.Router();
 
+async function getValidImage(images) {
+    // Check if url is a valid image
+    async function isValidImageUrl(url) {
+      try {
+        const res = await fetch(url, { method: "HEAD" });
+        const type = res.headers.get("Content-Type");
+        return res.ok && type && type.startsWith("image/");
+      } catch {
+        return false;
+      }
+    }
+  
+    // https versions
+    for (const originalUrl of images) {
+      let url = originalUrl;
+      if (url.startsWith("http://")) {
+        url = url.replace("http://", "https://");
+      }
+      if (await isValidImageUrl(url)) {
+        return url;
+      }
+    }
+  
+    for (const url of images) {
+      if (await isValidImageUrl(url)) {
+        return url;
+      }
+    }
+  
+    return null;
+  }
+  
+
 router.post('/', async (req, res) => {
     const supabase = createClient(
         process.env.SUPABASE_URL,
@@ -52,7 +85,7 @@ router.post('/', async (req, res) => {
         if (!item) return res.status(404).json({ error: 'Product not found' });
 
         const product_name = item.title;
-        const image_url = item.images?.[0] || null;
+        const image_url = (await getValidImage(item.images)) || null
         const brand = item.brand || 'Unknown';
 
         // Check if it is a skincare product
@@ -89,11 +122,11 @@ router.post('/', async (req, res) => {
     
     Product name: ${product_name}
     
-    Rate this product from 0 to 10, and provide 3 combined pros and cons depending on the product quality.
-    Rating 8-10 -> 3 pros
-    Rating 6-8 -> 2 pros, 1 con
-    Rating 4-6 -> 1 pro, 2 cons
-    Rating 0-4 -> 3 cons
+    Rate this product from 0 to 100, and provide 3 combined pros and cons depending on the product quality.
+    Rating 80-100 -> 3 pros
+    Rating 60-80 -> 2 pros, 1 con
+    Rating 40-60 -> 1 pro, 2 cons
+    Rating 00-40 -> 3 cons
     
     Return your response in JSON format like:
     {
@@ -136,6 +169,7 @@ router.post('/', async (req, res) => {
             .select()
             .single();
 
+        console.log(insertedProduct, insertError)
         if (insertError) throw insertError;
 
         res.status(200).json({
