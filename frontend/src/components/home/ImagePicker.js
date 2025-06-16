@@ -64,84 +64,73 @@ const CameraScanScreen = ({ navigation, route }) => {
         };
     }, [navigation]);
 
-    const takePicture = async () => {
+    const processImage = async (imageUri, isFromCamera = false) => {
         try {
             setIsAnalyzing(true);
 
             const fileName = `${Date.now()}_face_analysis.jpg`;
             const filePath = `${user?.id}/${fileName}`;
 
-            if (camera.current) {
-                const photo = await camera.current.takePhoto({
-                    quality: 90,
-                    skipMetadata: true,
-                });
+            // Convert image to base64 and upload
+            const responsePhoto = await fetch(imageUri);
+            const blob = await responsePhoto.blob();
 
-                // Method 1: Use fetch + FileReader (no external dependencies)
-                const fileUri = `file://${photo.path}`;
-                const responsePhoto = await fetch(fileUri);
-                const blob = await responsePhoto.blob();
+            const base64Data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
 
-                // Convert blob to base64
-                const base64Data = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        const base64 = reader.result.split(',')[1];
-                        resolve(base64);
-                    };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(blob);
-                });
+            const arrayBuffer = decode(base64Data);
 
-                // Convert base64 to ArrayBuffer using Supabase's method
-                const arrayBuffer = decode(base64Data);
+            const { data: uploadData, error: uploadError } =
+                await supabase.storage
+                    .from('face-images')
+                    .upload(filePath, arrayBuffer, {
+                        contentType: 'image/jpeg',
+                        cacheControl: '3600',
+                        upsert: false,
+                    });
 
-                const { data: uploadData, error: uploadError } =
-                    await supabase.storage
-                        .from('face-images')
-                        .upload(filePath, arrayBuffer, {
-                            contentType: 'image/jpeg',
-                            cacheControl: '3600',
-                            upsert: false,
-                        });
+            if (uploadError)
+                throw new Error(
+                    `Failed to upload image: ${uploadError.message}`
+                );
 
-                if (uploadError) {
-                    console.error('Upload error:', uploadError);
-                    throw new Error(
-                        `Failed to upload image: ${uploadError.message}`
-                    );
-                }
+            // Call backend API
+            const response = await fetch(`http://${IP}:5111/api/face`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    img: uploadData.path,
+                    user_id: user.id,
+                }),
+            });
 
-                // Call backend API for analysis
-                const response = await fetch(`http://${IP}:5111/api/face`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        img: uploadData.path,
-                        user_id: user.id,
-                    }),
-                });
+            if (!response.ok) throw new Error('Analysis failed');
 
-                if (!response.ok) {
-                    throw new Error('Analysis failed');
-                }
+            const analysisData = await response.json();
 
-                const analysisData = await response.json();
-                console.log(analysisData.result);
-                // Display results
-                setIsAnalyzing(false);
-
-                // Navigate to scan results with the captured image
-                navigation.navigate('ScanResults', {
-                    scanImage: `file://${photo.path}`,
-                    scanResults: analysisData.result,
-                });
-            }
+            navigation.navigate('ScanResults', {
+                scanImage: imageUri,
+                scanResults: analysisData.result,
+            });
         } catch (error) {
-            console.error('Error taking picture:', error);
-            Alert.alert('Error', 'Failed to capture photo. Please try again.');
+            console.error('Error processing image:', error);
+            Alert.alert('Error', 'Failed to process image. Please try again.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const takePicture = async () => {
+        if (camera.current) {
+            const photo = await camera.current.takePhoto({
+                quality: 90,
+                skipMetadata: true,
+            });
+            await processImage(`file://${photo.path}`, true);
         }
     };
 
@@ -155,10 +144,7 @@ const CameraScanScreen = ({ navigation, route }) => {
             });
 
             if (!result.canceled) {
-                navigation.navigate('ScanResults', {
-                    scanImage: result.assets[0].uri,
-                    scanResults: {},
-                });
+                await processImage(result.assets[0].uri, false);
             }
         } catch (error) {
             console.error('Error picking image:', error);
