@@ -9,6 +9,7 @@ import { ActivityIndicator, View } from 'react-native';
 import ProfileScreen from '../screens/ProfileScreen';
 import ScanResultsScreen from '../components/home/FaceResults';
 import ImagePickerExample from '../components/home/ImagePicker';
+import ChartsPage from '../components/home/ChartsPage';
 
 const Stack = createNativeStackNavigator();
 
@@ -46,6 +47,7 @@ export default function AppNavigator() {
                     <Stack.Screen name="Profile" component={ProfileScreen} />
                     <Stack.Screen name="ImagePicker" component={ImagePickerExample} />
                     <Stack.Screen name="ScanResults" component={ScanResultsScreen} />
+                    <Stack.Screen name="Charts" component={ChartsPage} />
                 </>
             )}
         </Stack.Navigator>
