@@ -1,32 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import {
+    View,
+    Text,
+    ScrollView,
+    TouchableOpacity,
+    Image,
+    ActivityIndicator,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import GradientBackground from '../GradientBackground';
 import Navbar from '../Navbar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import ImagePickerExample from './ImagePicker';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
 import { getScoreColor } from '../../utils/helpers';
 
 const FaceAnalyzer = () => {
-    // Mock data
     const navigation = useNavigation();
-    const userName = 'Sarah';
-    const hasRecentScan = false; // Change to true later with context
     const { user } = useAuth();
+    const userName = user?.name;
+    const [hasRecentScan, setHasRecentScan] = useState(false);
+
     const [loadingScans, setLoadingScans] = useState(false);
     const [recentScans, setRecentScans] = useState([]);
-    const [scanError, setScanError] = useState(false)
+    const [scanError, setScanError] = useState(false);
 
-    const skinMetrics = [
-        { name: 'Redness', value: 65, trend: 'up', color: '#8B5CF6' },
-        { name: 'Hydration', value: 78, trend: 'up', color: '#06B6D4' },
-        { name: 'Acne', value: 45, trend: 'down', color: '#EF4444' },
-        { name: 'Overall', value: 72, trend: 'up', color: '#10B981' },
-    ];
+    const [skinMetrics, setSkinMetrics] = useState([
+        { name: 'Redness', value: 0, trend: 'stable', color: '#8B5CF6' },
+        { name: 'Hydration', value: 0, trend: 'stable', color: '#06B6D4' },
+        { name: 'Acne', value: 0, trend: 'stable', color: '#EF4444' },
+        { name: 'Overall', value: 0, trend: 'stable', color: '#10B981' },
+    ]);
 
-    // Mock recent scans with photos and scores
+    // Mock recent scans data
     const recentScanss = [
         {
             id: 1,
@@ -54,16 +60,88 @@ const FaceAnalyzer = () => {
         },
     ];
 
+    const fetchRecentResults = async () => {
+        if (recentScans && recentScans.length > 0) {
+            setHasRecentScan(true);
+
+            const currentScan = recentScans[0];
+
+            // Helper function to determine trend
+            const getTrend = (current, previous) => {
+                const difference = current - previous;
+
+                if (difference == 0) {
+                    return 'stable';
+                } else if (difference < 0) {
+                    return 'down';
+                } else {
+                    return 'up';
+                }
+            };
+
+            // Create updated metrics array
+            const updatedMetrics = [...skinMetrics];
+
+            // Update values
+            updatedMetrics[0].value = currentScan.data.redness || 0;
+            updatedMetrics[1].value = currentScan.data.hydration || 0;
+            updatedMetrics[2].value = currentScan.data.acne || 0;
+            updatedMetrics[3].value = currentScan.data.overall || 0;
+
+            // Get trends if previous scan data
+            if (recentScans.length > 1) {
+                const previousScan = recentScans[1];
+                console.log('Previous scan data:', previousScan.data);
+
+                updatedMetrics[0].trend = getTrend(
+                    currentScan.data.redness || 0,
+                    previousScan.data.redness || 0
+                );
+                updatedMetrics[1].trend = getTrend(
+                    currentScan.data.hydration || 0,
+                    previousScan.data.hydration || 0
+                );
+                updatedMetrics[2].trend = getTrend(
+                    currentScan.data.acne || 0,
+                    previousScan.data.acne || 0
+                );
+                updatedMetrics[3].trend = getTrend(
+                    currentScan.data.overall || 0,
+                    previousScan.data.overall || 0
+                );
+            } else {
+                // No previous data, so set trends to stable
+                updatedMetrics.forEach((metric) => {
+                    metric.trend = 'stable';
+                });
+            }
+
+            setSkinMetrics(updatedMetrics);
+
+            console.log('Updated skin metrics:', updatedMetrics);
+        } else {
+            console.log('No recent scans found');
+            setHasRecentScan(false);
+
+            // Reset to default values when no data
+            const resetMetrics = skinMetrics.map((metric) => ({
+                ...metric,
+                value: 0,
+                trend: 'stable',
+            }));
+            setSkinMetrics(resetMetrics);
+        }
+    };
+
     const handleScanPress = async () => {
         // Handle face scan button press
-        console.log('Starting face scan...');
-
         navigation.navigate('ImagePicker');
     };
 
     const handleMetricPress = (metric) => {
-        // Handle metric card press - navigate to detailed chart
+        // Handle metric card press 
         console.log(`Viewing ${metric} chart details`);
+        navigation.navigate('Charts', { selectedMetric: metric.toLowerCase() });
     };
 
     const fetchRecentScans = async () => {
@@ -82,37 +160,50 @@ const FaceAnalyzer = () => {
 
             const scansWithUrls = await Promise.all(
                 scans.map(async (scan) => {
-                  let signedUrl = null;
-                                    
-                  if (scan.image_path) {
-                    try {
-                      const { data: urlData, error: urlError } = await supabase.storage
-                        .from('face-images') 
-                        .createSignedUrl(scan.image_path, 3600); // 1 hour
-                      
-                      if (urlError) {
-                        console.error('Signed URL error for scan', scan.id, ':', urlError);
-                      } else if (urlData && urlData.signedUrl) {
-                        signedUrl = urlData.signedUrl;
-                      } else {
-                        console.warn('No signed URL data returned for scan', scan.id);
-                      }
-                    } catch (urlError) {
-                      console.error('Exception generating signed URL for scan:', scan.id, urlError);
+                    let signedUrl = null;
+
+                    if (scan.image_path) {
+                        try {
+                            const { data: urlData, error: urlError } =
+                                await supabase.storage
+                                    .from('face-images')
+                                    .createSignedUrl(scan.image_path, 3600); // 1 hour
+
+                            if (urlError) {
+                                console.error(
+                                    'Signed URL error for scan',
+                                    scan.id,
+                                    ':',
+                                    urlError
+                                );
+                            } else if (urlData && urlData.signedUrl) {
+                                signedUrl = urlData.signedUrl;
+                            } else {
+                                console.warn(
+                                    'No signed URL data returned for scan',
+                                    scan.id
+                                );
+                            }
+                        } catch (urlError) {
+                            console.error(
+                                'Exception generating signed URL for scan:',
+                                scan.id,
+                                urlError
+                            );
+                        }
+                    } else {
+                        console.log('No image_path for scan:', scan.id);
                     }
-                  } else {
-                    console.log('No image_path for scan:', scan.id);
-                  }
-                  
-                  return {
-                    data: {
-                      ...scan,
-                      date: new Date(scan.created_at),
-                    },
-                    image_url: signedUrl,
-                  };
+
+                    return {
+                        data: {
+                            ...scan,
+                            date: new Date(scan.created_at),
+                        },
+                        image_url: signedUrl,
+                    };
                 })
-              );
+            );
 
             setRecentScans(scansWithUrls);
         } catch (error) {
@@ -131,6 +222,10 @@ const FaceAnalyzer = () => {
         }, [user?.id])
     );
 
+    useEffect(() => {
+        fetchRecentResults();
+    }, [recentScans]);
+
     const handleRecentScanPress = (scan) => {
         // Handle recent scan press - will navigate to scan result screen later
         navigation.navigate('ScanResults', {
@@ -139,7 +234,6 @@ const FaceAnalyzer = () => {
         });
         console.log(scan);
     };
-
 
     const renderRecentScansContent = () => {
         if (loadingScans) {
@@ -214,8 +308,14 @@ const FaceAnalyzer = () => {
                             {/* Score overlay */}
                             {scan.data.overall && (
                                 <View className="absolute top-1 left-1 bg-black/90 rounded px-1">
-                                    <Text className="text-sm font-bold"
-                                    style={{ color: getScoreColor(scan.data.overall) }}>
+                                    <Text
+                                        className="text-sm font-bold"
+                                        style={{
+                                            color: getScoreColor(
+                                                scan.data.overall
+                                            ),
+                                        }}
+                                    >
                                         {Math.round(scan.data.overall)}
                                     </Text>
                                 </View>
@@ -224,31 +324,40 @@ const FaceAnalyzer = () => {
                             {/* Date at bottom */}
                             <View className="absolute bottom-0 left-0 right-0 bg-black/40 px-1">
                                 <Text className="text-white font-semibold text-sm text-center">
-                                    
-                                    {scan.data.date.getMonth() + 1}/{scan.data.date.getDate()}
+                                    {scan.data.date.getMonth() + 1}/
+                                    {scan.data.date.getDate()}
                                 </Text>
                             </View>
                         </View>
                     </TouchableOpacity>
                 ))}
-
-                {/* Add more scans indicator */}
-                <TouchableOpacity
-                    className="mx-2 items-center justify-center"
-                    onPress={() => navigation.navigate('ScanHistory')} // Optional: navigate to full scan history
-                >
-                    <View className="w-28 h-28 bg-gray-700/50 rounded-xl items-center justify-center border-2 border-dashed border-gray-600">
-                        <Icon
-                            name="chevron-forward"
-                            size={24}
-                            color="#9CA3AF"
-                        />
-                    </View>
-                </TouchableOpacity>
             </ScrollView>
         );
     };
 
+    const getTrendIcon = (trend) => {
+        switch (trend) {
+            case 'up':
+                return 'trending-up';
+            case 'down':
+                return 'trending-down';
+            case 'stable':
+            default:
+                return 'remove-outline';
+        }
+    };
+
+    const getTrendColor = (trend) => {
+        switch (trend) {
+            case 'up':
+                return '#10B981';
+            case 'down':
+                return '#EF4444';
+            case 'stable':
+            default:
+                return '#6B7280';
+        }
+    };
     return (
         <View className="h-full">
             <GradientBackground />
@@ -268,7 +377,7 @@ const FaceAnalyzer = () => {
                     <Text className="text-gray-400 text-base">
                         {hasRecentScan
                             ? 'Ready for your daily scan?'
-                            : 'Scan to get started'}
+                            : 'Take your first scan to get started'}
                     </Text>
                 </View>
 
@@ -298,7 +407,7 @@ const FaceAnalyzer = () => {
                         <Text className="text-white text-xl font-semibold">
                             Your Charts
                         </Text>
-                        <TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate("Charts")}>
                             <Icon
                                 name="chevron-forward"
                                 size={20}
@@ -307,50 +416,69 @@ const FaceAnalyzer = () => {
                         </TouchableOpacity>
                     </View>
 
-                    {/* Metrics Grid */}
-                    <View className="flex-row flex-wrap -mx-2">
-                        {skinMetrics.map((metric, index) => (
-                            <TouchableOpacity
-                                key={metric.name}
-                                onPress={() => handleMetricPress(metric.name)}
-                                className="w-1/2 px-2 mb-4"
-                                activeOpacity={0.7}
-                            >
-                                <View className="bg-[#413c48] rounded-xl p-4">
-                                    <View className="flex-row justify-between items-center mb-2">
-                                        <Text className="text-gray-300 text-sm">
-                                            {metric.name}
+                    {/* Show empty state if no scans, otherwise show metrics */}
+                    {!hasRecentScan ? (
+                        <View className="items-center justify-center py-8">
+                            <Icon
+                                name="analytics-outline"
+                                size={48}
+                                color="#6B7280"
+                            />
+                            <Text className="text-gray-400 text-lg mt-3">
+                                No Data Yet
+                            </Text>
+                            <Text className="text-gray-500 text-sm text-center mt-1">
+                                Take your first scan to see your skin metrics
+                            </Text>
+                        </View>
+                    ) : (
+                        /* Metrics Grid */
+                        <View className="flex-row flex-wrap -mx-2">
+                            {skinMetrics.map((metric, index) => (
+                                <TouchableOpacity
+                                    key={metric.name}
+                                    onPress={() =>
+                                        handleMetricPress(metric.name)
+                                    }
+                                    className="w-1/2 px-2 mb-4"
+                                    activeOpacity={0.7}
+                                >
+                                    <View className="bg-[#413c48] rounded-xl p-4">
+                                        <View className="flex-row justify-between items-center mb-2">
+                                            <Text className="text-gray-300 text-sm">
+                                                {metric.name}
+                                            </Text>
+                                            <Icon
+                                                name={getTrendIcon(
+                                                    metric.trend
+                                                )}
+                                                size={16}
+                                                color={getTrendColor(
+                                                    metric.trend
+                                                )}
+                                            />
+                                        </View>
+                                        <Text className="text-white text-2xl font-bold">
+                                            {Math.round(metric.value)}%
                                         </Text>
-                                        <Icon
-                                            name={
-                                                metric.trend === 'up'
-                                                    ? 'trending-up'
-                                                    : 'trending-down'
-                                            }
-                                            size={16}
-                                            color={
-                                                metric.trend === 'up'
-                                                    ? '#10B981'
-                                                    : '#EF4444'
-                                            }
-                                        />
+                                        <View className="bg-gray-600 h-2 rounded-full mt-2">
+                                            <View
+                                                className="h-2 rounded-full"
+                                                style={{
+                                                    width: `${Math.min(
+                                                        metric.value,
+                                                        100
+                                                    )}%`,
+                                                    backgroundColor:
+                                                        metric.color,
+                                                }}
+                                            />
+                                        </View>
                                     </View>
-                                    <Text className="text-white text-2xl font-bold">
-                                        {metric.value}%
-                                    </Text>
-                                    <View className="bg-gray-600 h-2 rounded-full mt-2">
-                                        <View
-                                            className="h-2 rounded-full"
-                                            style={{
-                                                width: `${metric.value}%`,
-                                                backgroundColor: metric.color,
-                                            }}
-                                        />
-                                    </View>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
                 </View>
 
                 {/* Recent Scans */}
@@ -364,7 +492,7 @@ const FaceAnalyzer = () => {
                     {renderRecentScansContent()}
                 </View>
 
-                {/* Daily Tip Section (Optional) */}
+                {/* Daily Tip Section */}
                 <View className="bg-gradient-to-r from-purple-900 to-purple-800 rounded-2xl p-6 mt-6">
                     <Text className="text-white text-lg font-semibold mb-2">
                         💡 Daily Tip
