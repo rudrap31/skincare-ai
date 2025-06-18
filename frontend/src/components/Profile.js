@@ -2,37 +2,37 @@ import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
     ActivityIndicator,
     ScrollView,
+    Alert,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
 import Toast from 'react-native-toast-message';
-
-const SKIN_TYPES = ['Normal', 'Dry', 'Oily', 'Combination', 'Sensitive'];
-const SKIN_CONCERNS = [
-    'Acne',
-    'Redness',
-    'Dryness',
-    'Oily skin',
-    'Hyperpigmentation',
-    'Fine lines',
-    'Sensitivity',
-];
+import GradientBackground from './GradientBackground';
+import Navbar from './Navbar';
 
 const Profile = () => {
-    const { user } = useAuth();
+    const { user, signOut } = useAuth();
     const [profile, setProfile] = useState({
         name: '',
         skin_type: '',
         skin_concerns: [],
+        created_at: null,
     });
     const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        streakDays: 0,
+        totalScans: 0,
+        memberLevel: 'Bronze'
+    });
 
     useEffect(() => {
-        if (user) fetchProfile();
+        if (user) {
+            fetchProfile();
+            fetchStats();
+        }
     }, [user]);
 
     const fetchProfile = async () => {
@@ -50,52 +50,152 @@ const Profile = () => {
                 name: data.name || '',
                 skin_type: data.skin_type || '',
                 skin_concerns: data.skin_concerns || [],
+                created_at: data.created_at,
             });
         }
         setLoading(false);
     };
 
-    const handleChange = (field, value) => {
-        setProfile((prev) => ({ ...prev, [field]: value }));
-    };
-
-    const handleSkinTypeSelect = (type) => {
-        setProfile((prev) => ({ ...prev, skin_type: type }));
-    };
-
-    const handleSkinConcernToggle = (concern) => {
-        setProfile((prev) => {
-            const isSelected = prev.skin_concerns.includes(concern);
-            return {
-                ...prev,
-                skin_concerns: isSelected
-                    ? prev.skin_concerns.filter((c) => c !== concern)
-                    : [...prev.skin_concerns, concern],
-            };
+    const fetchStats = async () => {
+        // Mock stats for now - replace with actual database queries
+        setStats({
+            streakDays: 7,
+            totalScans: 12,
+            memberLevel: 'Gold'
         });
     };
 
-    const handleSubmit = async () => {
-        const { error } = await supabase
-            .from('profiles')
-            .update(profile)
-            .eq('user_id', user.id);
-
-        if (error) {
-            Toast.show({ type: 'error', text1: 'Error updating profile.' });
-            console.error(error);
-        } else {
-            Toast.show({
-                type: 'success',
-                text1: 'Profile updated successfully!',
-            });
-        }
+    const handleSignOut = () => {
+        Alert.alert(
+            'Sign Out',
+            'Are you sure you want to sign out?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Sign Out', style: 'destructive', onPress: signOut }
+            ]
+        );
     };
+
+    const formatJoinDate = (dateString) => {
+        if (!dateString) return 'Recently';
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+            month: 'long', 
+            year: 'numeric' 
+        });
+    };
+
+    const ProfileHeader = () => (
+        <View className="items-center mb-8">
+            <View className="w-24 h-24 bg-purple-600 rounded-full items-center justify-center mb-4">
+                <Text className="text-white text-3xl font-bold">
+                    {profile.name ? profile.name.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || '?'}
+                </Text>
+            </View>
+            <Text className="text-white text-2xl font-bold">
+                {profile.name || 'User'}
+            </Text>
+            <Text className="text-gray-400 text-base">{user?.email}</Text>
+            
+            {/* Stats Row */}
+            {/* <View className="flex-row mt-6 space-x-8">
+                <View className="items-center">
+                    <View className="w-12 h-12 bg-green-500/20 rounded-full items-center justify-center mb-2">
+                        <Text className="text-green-500 text-lg">📅</Text>
+                    </View>
+                    <Text className="text-white font-bold text-lg">{stats.streakDays}</Text>
+                    <Text className="text-gray-400 text-xs">Day Streak</Text>
+                </View>
+                <View className="items-center">
+                    <View className="w-12 h-12 bg-blue-500/20 rounded-full items-center justify-center mb-2">
+                        <Text className="text-blue-500 text-lg">🎯</Text>
+                    </View>
+                    <Text className="text-white font-bold text-lg">{stats.totalScans}</Text>
+                    <Text className="text-gray-400 text-xs">Total Scans</Text>
+                </View>
+                <View className="items-center">
+                    <View className="w-12 h-12 bg-purple-500/20 rounded-full items-center justify-center mb-2">
+                        <Text className="text-purple-500 text-lg">🏆</Text>
+                    </View>
+                    <Text className="text-white font-bold text-lg">{stats.memberLevel}</Text>
+                    <Text className="text-gray-400 text-xs">Member</Text>
+                </View>
+            </View> */}
+        </View>
+    );
+
+    const SkinProfile = () => (
+        <View className="bg-gray-800/50 rounded-2xl p-4 mb-6">
+            <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-white text-lg font-semibold">Skin Profile</Text>
+                <TouchableOpacity 
+                    className="p-1"
+                    onPress={() => {
+                        // Navigate to edit profile screen
+                        // navigation.navigate('EditProfile');
+                        Toast.show({
+                            type: 'info',
+                            text1: 'Edit Profile',
+                            text2: 'Feature coming soon!'
+                        });
+                    }}
+                >
+                    <Text className="text-purple-500 text-base">✏️</Text>
+                </TouchableOpacity>
+            </View>
+            
+            <View className="mb-3">
+                <Text className="text-gray-400 text-sm mb-1">Skin Type</Text>
+                {profile.skin_type ? (
+                    <View className="bg-purple-600/20 px-3 py-2 rounded-full self-start">
+                        <Text className="text-purple-300 font-medium">{profile.skin_type}</Text>
+                    </View>
+                ) : (
+                    <Text className="text-gray-500 italic">Not set</Text>
+                )}
+            </View>
+            
+            <View>
+                <Text className="text-gray-400 text-sm mb-2">Main Concerns</Text>
+                {profile.skin_concerns.length > 0 ? (
+                    <View className="flex-row flex-wrap gap-2">
+                        {profile.skin_concerns.map((concern, index) => (
+                            <View key={index} className="bg-gray-700 px-3 py-1 rounded-full">
+                                <Text className="text-gray-300 text-sm">{concern}</Text>
+                            </View>
+                        ))}
+                    </View>
+                ) : (
+                    <Text className="text-gray-500 italic">None selected</Text>
+                )}
+            </View>
+        </View>
+    );
+
+    const MenuButton = ({ icon, title, subtitle, onPress, isDestructive = false }) => (
+        <TouchableOpacity 
+            onPress={onPress}
+            className="bg-gray-800/50 rounded-2xl p-4 mb-3 flex-row items-center"
+        >
+            <View className="w-10 h-10 bg-gray-700 rounded-full items-center justify-center mr-4">
+                <Text className="text-gray-400 text-lg">{icon}</Text>
+            </View>
+            <View className="flex-1">
+                <Text className={`font-medium ${isDestructive ? 'text-red-400' : 'text-white'}`}>
+                    {title}
+                </Text>
+                {subtitle && <Text className="text-gray-400 text-sm">{subtitle}</Text>}
+            </View>
+            {!isDestructive && (
+                <Text className="text-gray-400 text-xl">›</Text>
+            )}
+        </TouchableOpacity>
+    );
 
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center">
-                <ActivityIndicator size="large" color="#fff" />
+                <ActivityIndicator size="large" color="#8B5CF6" />
                 <Text className="text-white mt-6 text-lg font-semibold">
                     Loading Profile...
                 </Text>
@@ -104,86 +204,64 @@ const Profile = () => {
     }
 
     return (
-        <ScrollView className="flex-1  px-6 pt-12 mt-20">
-            <Text className="text-white text-3xl font-bold mb-10 text-center">
-                Your Profile
-            </Text>
-
-            {/* Name */}
+        <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
+           
+            <Navbar/>
+            <ProfileHeader />
+            <SkinProfile />
+            
             <View className="mb-8">
-                <Text className="text-white mb-2 ml-2">Name</Text>
-                <TextInput
-                    value={profile.name}
-                    onChangeText={(text) => handleChange('name', text)}
-                    placeholder="Enter your name"
-                    placeholderTextColor="#aaa"
-                    className="bg-[#1a1a1a] text-white px-4 py-3 rounded-xl border border-[#333]"
+                <MenuButton 
+                    icon="⚙️"
+                    title="Account Settings"
+                    subtitle="Privacy, notifications, data"
+                    onPress={() => {
+                        Toast.show({
+                            type: 'info',
+                            text1: 'Settings',
+                            text2: 'Feature coming soon!'
+                        });
+                    }}
+                />
+                <MenuButton 
+                    icon="📊"
+                    title="Edit Skin Profile"
+                    subtitle="Update skin type and concerns"
+                    onPress={() => {
+                        // Navigate to edit profile screen with skin type/concerns
+                        Toast.show({
+                            type: 'info',
+                            text1: 'Edit Skin Profile',
+                            text2: 'Feature coming soon!'
+                        });
+                    }}
+                />
+                <MenuButton 
+                    icon="❓"
+                    title="Help & Support"
+                    subtitle="Contact Us"
+                    onPress={() => {
+                        Toast.show({
+                            type: 'info',
+                            text1: 'Help & Support',
+                            text2: 'Feature coming soon!'
+                        });
+                    }}
+                />
+                <MenuButton 
+                    icon="🚪"
+                    title="Sign Out"
+                    onPress={handleSignOut}
+                    isDestructive={true}
                 />
             </View>
-
-            {/* Email */}
-            <View className="mb-8">
-                <Text className="text-white mb-2 ml-2">Email</Text>
-                <TextInput
-                    value={user?.email}
-                    editable={false}
-                    className="bg-[#333333] text-white px-4 py-3 rounded-xl border border-[#333]"
-                />
-            </View>
-
-            {/* Skin Type */}
-            <View className="mb-8">
-                <Text className="text-white mb-4 text-lg font-semibold text-center">
-                    Skin Type
+            
+            <View className="items-center pb-8">
+                <Text className="text-gray-500 text-sm">
+                    Member since {formatJoinDate(profile.created_at)}
                 </Text>
-                <View className="flex-row flex-wrap justify-center gap-3">
-                    {SKIN_TYPES.map((type) => (
-                        <TouchableOpacity
-                            key={type}
-                            onPress={() => handleSkinTypeSelect(type)}
-                            className={`px-4 py-2 rounded-full ${
-                                profile.skin_type === type
-                                    ? 'border bg-primary'
-                                    : 'border border-gray-600'
-                            }`}
-                        >
-                            <Text className="text-white">{type}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                <Text className="text-gray-600 text-xs mt-1 mb-16">simplyskin v1.0.0</Text>
             </View>
-
-            {/* Skin Concerns */}
-            <View className="mb-8">
-                <Text className="text-white mb-4 text-lg font-semibold text-center">
-                    Skin Concerns
-                </Text>
-                <View className="flex-row flex-wrap justify-center gap-3">
-                    {SKIN_CONCERNS.map((concern) => (
-                        <TouchableOpacity
-                            key={concern}
-                            onPress={() => handleSkinConcernToggle(concern)}
-                            className={`px-4 py-2 rounded-full ${
-                                profile.skin_concerns.includes(concern)
-                                    ? 'border bg-primary'
-                                    : 'border border-gray-600'
-                            }`}
-                        >
-                            <Text className="text-white">{concern}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            </View>
-
-            {/* Save Button */}
-            <TouchableOpacity
-                onPress={handleSubmit}
-                className="bg-primary py-4 rounded-full mx-10 mt-6"
-            >
-                <Text className="text-white text-center text-lg font-bold">
-                    Save Changes
-                </Text>
-            </TouchableOpacity>
         </ScrollView>
     );
 };

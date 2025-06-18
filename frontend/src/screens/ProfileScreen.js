@@ -6,47 +6,13 @@ import Octicons from 'react-native-vector-icons/Octicons';
 import { useNavigation } from '@react-navigation/native';
 import Profile from '../components/Profile';
 import { useAuth } from '../context/AuthContext';
+import Navbar from '../components/Navbar';
 
 const ProfileScreen = () => {
-    const navigation = useNavigation();
-    const { signOut } = useAuth();
-
-    const handleSignOut = async () => {
-        try {
-            const { error } = await signOut();
-            if (error) throw error;
-            Toast.show({
-                type: 'success',
-                position: 'top',
-                text1: 'Signed Out!',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-            });
-        } catch (error) {
-            Toast.show({
-                type: 'error',
-                position: 'top',
-                text1: 'Something Went Wrong!',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-            });
-        }
-    };
 
     return (
-        <View className="flex-1 justify-center px-6">
+        <View className="flex-1 justify-center">
             <GradientBackground />
-            <TouchableOpacity
-                onPress={() => navigation.goBack()}
-                className="absolute top-20 left-5 z-10"
-            >
-                <Ionicons name="arrow-back" size={40} color="white" />
-            </TouchableOpacity>
-            <TouchableOpacity
-                onPress={() => handleSignOut()}
-                className="absolute top-20 right-5 z-10"
-            >
-                <Octicons name="sign-out" size={40} color="red" />
-            </TouchableOpacity>
-
             <Profile />
         </View>
     );
