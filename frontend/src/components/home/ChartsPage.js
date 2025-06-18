@@ -278,13 +278,14 @@ const ChartsPage = ({ route }) => {
     return (
         <View className="flex-1">
             <GradientBackground />
-            <Navbar title="Skin Analytics" />
+            
 
             <ScrollView 
                 className="flex-1 px-6"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
             >
+                <Navbar/>
                 {/* Header */}
                 <View className="mb-6">
                     <Text className="text-white text-2xl font-bold">
