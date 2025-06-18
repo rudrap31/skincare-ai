@@ -4,9 +4,9 @@ import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import FaceAnalyzer from '../components/home/FaceAnalyzer';
-import RoutineRater from '../components/home/RoutineRater';
 import ProductScanner from '../components/home/ProductScanner';
 import { useUIStore } from '../store/uiStore';
+import ProfileScreen from './ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -24,8 +24,8 @@ const BottomTabs = () => {
 
                     if (route.name === 'ImageAnalyzer') {
                         iconName = focused ? 'camera' : 'camera-outline';
-                    } else if (route.name === 'RoutineRater') {
-                        iconName = focused ? 'flask' : 'flask-outline';
+                    } else if (route.name === 'Profile') {
+                        iconName = focused ? 'person' : 'person-outline';
                     } else if (route.name === 'ProductScanner') {
                         iconName = focused ? 'barcode' : 'barcode-outline';
                     }
@@ -40,7 +40,7 @@ const BottomTabs = () => {
                 },
                 tabBarLabel: ({ focused }) => {
                     const labelMap = {
-                        RoutineRater: 'Routine',
+                        Profile: 'Profile',
                         ImageAnalyzer: 'Analyze',
                         ProductScanner: 'Scan',
                     };
@@ -58,7 +58,7 @@ const BottomTabs = () => {
                 },
             })}
         >
-            <Tab.Screen name="RoutineRater" component={RoutineRater} />
+            <Tab.Screen name="Profile" component={ProfileScreen} />
             <Tab.Screen name="ImageAnalyzer" component={FaceAnalyzer} />
             <Tab.Screen name="ProductScanner" component={ProductScanner} />
         </Tab.Navigator>

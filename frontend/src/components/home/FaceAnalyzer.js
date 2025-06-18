@@ -361,7 +361,6 @@ const FaceAnalyzer = () => {
     return (
         <View className="h-full">
             <GradientBackground />
-            <Navbar />
 
             {/* Scrollable Content */}
             <ScrollView
@@ -369,6 +368,7 @@ const FaceAnalyzer = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
             >
+                <Navbar />
                 {/* Greeting */}
                 <View className="mb-6 ml-4">
                     <Text className="text-white text-2xl font-semibold">

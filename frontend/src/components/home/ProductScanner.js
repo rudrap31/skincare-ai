@@ -8,7 +8,7 @@ import {
     Image,
     Animated,
     Dimensions,
-    StatusBar,
+    StatusBar, SafeAreaView
 } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import {
@@ -133,7 +133,7 @@ const ProductScanner = () => {
     if (device == null) return <Text>No camera device</Text>;
 
     return (
-        <View className="h-full flex-1">
+        <View className="h-full flex-1 px-6">
             <GradientBackground />
             <Navbar />
 
@@ -155,32 +155,55 @@ const ProductScanner = () => {
                 />
 
                 {/* Camera overlay */}
-                <View className="flex-1 bg-black/10">
+                
+
+            {/* Overlay UI */}
+            <SafeAreaView className="absolute inset-0">
+                {/* Top Bar */}
+                <View className="flex-row items-center justify-between px-6 pt-4">
                     <TouchableOpacity
                         onPress={() => setCameraOn(false)}
-                        className="absolute top-16 left-5 z-50"
+                        className="w-10 h-10 items-center justify-center"
                     >
-                        <View className="bg-black/60 rounded-full p-3">
-                            <Ionicons
-                                name="arrow-back"
-                                size={24}
-                                color="white"
-                            />
-                        </View>
+                        <Ionicons name="close" size={30} color="white" />
                     </TouchableOpacity>
 
-                    {/* Scanning frame */}
-                    <View className="absolute top-1/2 left-1/2 w-64 h-64 -mt-32 -ml-32">
-                        {/* Corner brackets */}
-                        <Text className="absolute -top-14 left-0 right-0 text-center text-white text-lg font-medium">
-                            Position barcode within frame
+                    <View className="items-center ">
+                        <Text className="text-white text-2xl font-bold">
+                            simplyskin
                         </Text>
-                        <View className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-white rounded-tl-2xl" />
-                        <View className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-white rounded-tr-2xl" />
-                        <View className="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-white rounded-bl-2xl" />
-                        <View className="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-white rounded-br-2xl" />
+                        <View className="w-2 h-2 bg-green-500 rounded-full mt-1" />
+                    </View>
+
+                    <View className="w-10 h-10" />
+                </View>
+
+                {/* Instructions */}
+                <View className="items-center mt-16 px-6">
+                    <Text className="text-white text-lg font-medium text-center">
+                    Hold the camera infront of the barcode
+                    </Text>
+                </View>
+
+                {/* Camera Frame */}
+                <View className="flex-1 items-center justify-center px-8 mb-10">
+                    <View
+                        className="border-2 border-white/50 rounded-3xl"
+                        style={{
+                            width: width * 0.8,
+                            height: width * 0.8,
+                            backgroundColor: 'transparent',
+                        }}
+                    />
+                </View>
+
+                {/* Bottom Section */}
+                <View className="pb-8">
+                    <View className="items-center h-20">     
                     </View>
                 </View>
+                
+            </SafeAreaView>
             </View>
 
             {/* Loading overlay */}
@@ -201,7 +224,7 @@ const ProductScanner = () => {
 
             {!cameraOn && (
                 <Animated.View
-                    className="flex-1 pt-5"
+                    className="flex-1 pt-1"
                     style={{
                         opacity: fadeAnim,
                         transform: [
@@ -211,8 +234,8 @@ const ProductScanner = () => {
                     }}
                 >
                     {/* Header section */}
-                    <View className="flex-row justify-between items-center px-5 mb-5">
-                        <Text className="text-white text-3xl font-bold">
+                    <View className="flex-row justify-between items-center mb-5">
+                        <Text className="text-white text-2xl font-bold">
                             Recent Products
                         </Text>
                         <TouchableOpacity
@@ -235,7 +258,7 @@ const ProductScanner = () => {
                     <ScrollView
                         className="flex-1"
                         contentContainerStyle={{
-                            paddingHorizontal: 20,
+                            
                             paddingBottom: 20,
                         }}
                         showsVerticalScrollIndicator={false}
