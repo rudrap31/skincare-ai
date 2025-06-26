@@ -20,6 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
 import { decode } from 'base64-arraybuffer';
 import { IP } from '../../Constants';
+import ActionSheet from 'react-native-actions-sheet';
 
 const { width, height } = Dimensions.get('window');
 
@@ -29,8 +30,10 @@ const CameraScanScreen = ({ navigation, route }) => {
     const { hasPermission, requestPermission } = useCameraPermission();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const { user } = useAuth();
+    const [isServiceError, setIsServiceError] = useState(false);
 
     const [isActive, setIsActive] = useState(true);
+    const actionSheetRef = useRef(null);
 
     useEffect(() => {
         const requestCameraPermission = async () => {
@@ -108,9 +111,23 @@ const CameraScanScreen = ({ navigation, route }) => {
                 }),
             });
 
-            if (!response.ok) throw new Error('Analysis failed');
-
+            if (!response.ok) {
+                if (
+                response.status === 400
+            ) {
+                setIsServiceError(false);
+                actionSheetRef.current?.show();
+            } else if (
+                response.status === 503 
+            ) {
+                setIsServiceError(true);
+                actionSheetRef.current?.show();
+            }
+            setIsAnalyzing(false);
+            return;
+        }
             const analysisData = await response.json();
+            console.log(analysisData)
 
             navigation.navigate('ScanResults', {
                 scanImage: imageUri,
@@ -219,9 +236,9 @@ const CameraScanScreen = ({ navigation, route }) => {
                 <View className="flex-row items-center justify-between px-6 pt-4">
                     <TouchableOpacity
                         onPress={handleClose}
-                        className="w-10 h-10 items-center justify-center"
+                        className="w-12 h-12 items-center justify-center bg-black/40 backdrop-blur-sm rounded-full border border-white/20"
                     >
-                        <Icon name="close" size={30} color="white" />
+                        <Icon name="close" size={24} color="white" />
                     </TouchableOpacity>
 
                     <View className="items-center ">
@@ -292,6 +309,102 @@ const CameraScanScreen = ({ navigation, route }) => {
                 </View>
                 <SimpleLoadingOverlay isVisible={isAnalyzing} />
             </SafeAreaView>
+            <ActionSheet
+                ref={actionSheetRef}
+                rawUnderStatusBar={false}
+                useBottomSafeAreaPadding
+                gestureEnabled={true}
+                containerStyle={{
+                    backgroundColor: '#1e1e1e',
+                    borderTopLeftRadius: 20,
+                    borderTopRightRadius: 20,
+                    marginBottom: 0,
+                }}
+            >
+                <View className="px-6 py-8 bg-[#1e1e1e] mb-1">
+                    {/* Error Icon */}
+                    <View className="items-center mb-6">
+                        <Text className="text-6xl">
+                            {isServiceError ? '🛠️' : '⚠️'}
+                        </Text>
+                    </View>
+
+                    {/* Title */}
+                    <Text className="text-2xl font-bold text-center text-gray-200 mb-4">
+                        {isServiceError
+                            ? 'Service Unavailable'
+                            : 'Photo Not Detected'}
+                    </Text>
+
+                    {/* Description */}
+                    <Text className="text-base text-gray-300 text-center mb-6 leading-6">
+                        {isServiceError
+                            ? 'Our face analysis service is temporarily unavailable. Please try again in a few moments.'
+                            : "We couldn't detect your face clearly in the photo. This might be due to poor lighting or the photo not showing your face properly."}
+                    </Text>
+
+                    {/* Tips Section - Only show for face detection errors */}
+                    {!isServiceError && (
+                        <View className="bg-white/10 rounded-lg p-4 mb-8">
+                            <Text className="text-lg font-semibold text-gray-200 mb-3">
+                                Tips for a better photo:
+                            </Text>
+                            <View className="flex-row items-start mb-2">
+                                <Text className="text-purple-400 mr-3 text-base">
+                                    •
+                                </Text>
+                                <Text className="text-gray-400 flex-1 text-base">
+                                    Make sure your face is clearly visible
+                                </Text>
+                            </View>
+                            <View className="flex-row items-start mb-2">
+                                <Text className="text-purple-400 mr-3 text-base">
+                                    •
+                                </Text>
+                                <Text className="text-gray-400 flex-1 text-base">
+                                    Use good lighting (avoid shadows)
+                                </Text>
+                            </View>
+                            
+                            <View className="flex-row items-start">
+                                <Text className="text-purple-400 mr-3 text-base">
+                                    •
+                                </Text>
+                                <Text className="text-gray-400 flex-1 text-base">
+                                    Remove any obstructions (sunglasses, hat,
+                                    etc.)
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Service Error Info */}
+                    {isServiceError && (
+                        <View className="bg-white/10 rounded-lg p-4 mb-8">
+                            <Text className="text-lg font-semibold text-gray-200 mb-2">
+                                What happened?
+                            </Text>
+                            <Text className="text-gray-400 text-base leading-6">
+                                Our AI analysis service is experiencing
+                                temporary issues. This usually resolves quickly.
+                                You can try again in a few moments.
+                            </Text>
+                        </View>
+                    )}
+
+                    {/* Action Buttons */}
+                    <View className="space-y-3">
+                        <TouchableOpacity
+                            onPress={() => actionSheetRef.current.hide()}
+                            className="bg-purple-600 py-4 rounded-lg"
+                        >
+                            <Text className="text-white text-center font-semibold text-lg">
+                                Try Again
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </ActionSheet>
         </View>
     );
 };
