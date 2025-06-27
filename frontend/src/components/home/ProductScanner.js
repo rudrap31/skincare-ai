@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Text,
     View,
     StyleSheet,
     TouchableOpacity,
-    ScrollView,
-    Image,
     Animated,
     Dimensions,
-    StatusBar, SafeAreaView
+    SafeAreaView,
+    ActivityIndicator,
 } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import {
@@ -16,36 +15,25 @@ import {
     useCodeScanner,
 } from 'react-native-vision-camera';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import GradientBackground from '../GradientBackground';
-import Navbar from '../Navbar';
-import { useUIStore } from '../../store/uiStore';
 import { useAuth } from '../../context/AuthContext';
 import { useScannedProductsStore } from '../../store/scannedProductsStore';
-import { ActivityIndicator } from 'react-native';
-import RatingCircle from '../RatingCircle';
 import { IP } from '../../Constants';
-import ProductSheet from './ProductSheet';
+import { useNavigation } from '@react-navigation/native';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const ProductScanner = () => {
     const device = useCameraDevice('back');
     const { hasPermission, requestPermission } = useCameraPermission();
-    const setShowTabs = useUIStore((state) => state.setShowTabs);
     const { user } = useAuth();
     const scannedRef = useRef(false);
-    const { fetchScannedProducts, products, loading } =
-        useScannedProductsStore();
     const [scanLoading, setScanLoading] = useState(false);
-    const [selectedProduct, setSelectedProduct] = useState(null);
-    const [cameraOn, setCameraOn] = useState(false);
-    const sheetRef = useRef(null);
+    const [cameraOn, setCameraOn] = useState(true);
+    const navigation = useNavigation();
 
     // Animation values
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(50)).current;
-    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const slideAnim = useRef(new Animated.Value(300)).current;
 
     useEffect(() => {
         if (!hasPermission) {
@@ -54,37 +42,29 @@ const ProductScanner = () => {
     }, []);
 
     useEffect(() => {
-        if (user?.id) fetchScannedProducts(user.id);
-    }, [user?.id]);
+        // Reset scanner state when opening
+        scannedRef.current = false;
+        setCameraOn(true);
+        setScanLoading(false);
 
-    useEffect(() => {
-        setShowTabs(!cameraOn);
-    }, [cameraOn]);
-
-    // Animate content on mount
-    useEffect(() => {
+        // Animate in
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 800,
+                duration: 300,
                 useNativeDriver: true,
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
-                duration: 600,
-                useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-                toValue: 1,
-                duration: 500,
+                duration: 300,
                 useNativeDriver: true,
             }),
         ]).start();
     }, []);
 
-    const handleScanPress = () => {
-        scannedRef.current = false;
-        setCameraOn(true);
+    const handleClose = () => {
+        setCameraOn(false);
+        onClose();
     };
 
     const codeScanner = useCodeScanner({
@@ -106,237 +86,232 @@ const ProductScanner = () => {
                 });
 
                 const { addProduct } = useScannedProductsStore.getState();
-
                 const json = await res.json();
-                if (json.success != true) {
-                    setSelectedProduct(null);
-                    sheetRef.current?.show();
+
+                if (json.success !== true) {
                     setScanLoading(false);
                     setCameraOn(false);
+                    navigation.popTo('Home', {
+                        scannedProduct: null,
+                    });
                     return;
                 }
+
                 addProduct(json.data);
-
-                setSelectedProduct(json.data);
-                sheetRef.current?.show();
-
                 console.log('Scan result:', json);
+
+                setScanLoading(false);
+                setCameraOn(false);
+                navigation.popTo('Home', {
+                    scannedProduct: json.data,
+                });
             } catch (error) {
                 console.error('Scan request failed:', error);
+                navigation.popTo('Home', {
+                    scannedProduct: null,
+                });
             }
-            setScanLoading(false);
-            setCameraOn(false);
         },
     });
 
-    if (!hasPermission) return <Text>No permission</Text>;
-    if (device == null) return <Text>No camera device</Text>;
-
-    return (
-        <View className="h-full flex-1 px-6">
-            <GradientBackground />
-            <Navbar />
-
-            {/* Camera layer */}
-            <View
+    if (!hasPermission) {
+        return (
+            <Animated.View
                 style={[
                     StyleSheet.absoluteFill,
                     {
-                        zIndex: 50,
-                        display: cameraOn ? 'flex' : 'none',
+                        zIndex: 1000,
+                        backgroundColor: 'rgba(0,0,0,0.9)',
+                        opacity: fadeAnim,
                     },
                 ]}
             >
-                <Camera
-                    style={StyleSheet.absoluteFill}
-                    device={device}
-                    isActive={cameraOn}
-                    codeScanner={codeScanner}
-                />
+                <SafeAreaView className="flex-1 justify-center items-center px-6">
+                    <Animated.View
+                        className="bg-white rounded-2xl p-8 items-center shadow-2xl"
+                        style={{
+                            transform: [{ translateY: slideAnim }],
+                        }}
+                    >
+                        <Ionicons
+                            name="camera-outline"
+                            size={64}
+                            color="#9333ea"
+                        />
+                        <Text className="text-gray-800 text-xl font-bold mt-4 text-center">
+                            Camera Permission Required
+                        </Text>
+                        <Text className="text-gray-600 text-center mt-2 mb-6">
+                            We need access to your camera to scan product
+                            barcodes
+                        </Text>
 
-                {/* Camera overlay */}
-                
+                        <View className="flex-row space-x-3">
+                            <TouchableOpacity
+                                onPress={handleClose}
+                                className="bg-gray-200 px-6 py-3 rounded-xl flex-1"
+                            >
+                                <Text className="text-gray-800 font-semibold text-center">
+                                    Cancel
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={requestPermission}
+                                className="bg-purple-600 px-6 py-3 rounded-xl flex-1"
+                            >
+                                <Text className="text-white font-semibold text-center">
+                                    Grant Permission
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Animated.View>
+                </SafeAreaView>
+            </Animated.View>
+        );
+    }
+
+    if (device == null) {
+        return (
+            <Animated.View
+                style={[
+                    StyleSheet.absoluteFill,
+                    {
+                        zIndex: 1000,
+                        backgroundColor: 'rgba(0,0,0,0.9)',
+                        opacity: fadeAnim,
+                    },
+                ]}
+            >
+                <SafeAreaView className="flex-1 justify-center items-center px-6">
+                    <Animated.View
+                        className="bg-black rounded-2xl p-8 items-center shadow-2xl"
+                        style={{
+                            transform: [{ translateY: slideAnim }],
+                        }}
+                    >
+                        <Ionicons
+                            name="camera-off-outline"
+                            size={64}
+                            color="#ef4444"
+                        />
+                        <Text className="text-gray-800 text-xl font-bold mt-4 text-center">
+                            No Camera Found
+                        </Text>
+                        <Text className="text-gray-600 text-center mt-2 mb-6">
+                            Unable to access camera device
+                        </Text>
+
+                        <TouchableOpacity
+                            onPress={handleClose}
+                            className="bg-gray-600 px-8 py-3 rounded-xl"
+                        >
+                            <Text className="text-white font-semibold">
+                                Close
+                            </Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </SafeAreaView>
+            </Animated.View>
+        );
+    }
+
+    return (
+        <Animated.View
+            style={[
+                StyleSheet.absoluteFill,
+                {
+                    zIndex: 1000,
+                    opacity: fadeAnim,
+                },
+            ]}
+        >
+            {/* Camera */}
+            <Camera
+                style={StyleSheet.absoluteFill}
+                device={device}
+                isActive={cameraOn}
+                codeScanner={codeScanner}
+            />
+
+            {/* Loading overlay */}
+            {scanLoading && (
+                <Animated.View
+                    className="absolute inset-0 bg-black/80 justify-center items-center"
+                    style={{
+                        transform: [{ translateY: slideAnim }],
+                    }}
+                >
+                    <View className="items-center bg-white/10 backdrop-blur-sm rounded-2xl p-8 mx-6">
+                        <ActivityIndicator size="large" color="#ffffff" />
+                        <Text className="text-white text-lg font-semibold mt-4 text-center">
+                            Analyzing product...
+                        </Text>
+                        <Text className="text-white/70 text-sm text-center mt-2">
+                            Please wait while we look up the product information
+                        </Text>
+                    </View>
+                </Animated.View>
+            )}
 
             {/* Overlay UI */}
             <SafeAreaView className="absolute inset-0">
                 {/* Top Bar */}
-                <View className="flex-row items-center justify-between px-6 pt-4">
+                <Animated.View
+                    className="flex-row items-center justify-between px-6 pt-4"
+                    style={{
+                        transform: [{ translateY: slideAnim }],
+                    }}
+                >
                     <TouchableOpacity
-                        onPress={() => setCameraOn(false)}
-                        className="w-10 h-10 items-center justify-center"
+                        onPress={handleClose}
+                        className="w-12 h-12 items-center justify-center bg-black/40 backdrop-blur-sm rounded-full border border-white/20"
                     >
-                        <Ionicons name="close" size={30} color="white" />
+                        <Ionicons name="close" size={24} color="white" />
                     </TouchableOpacity>
 
-                    <View className="items-center ">
-                        <Text className="text-white text-2xl font-bold">
+                    <View className="items-center">
+                        <Text className="text-white text-2xl font-bold drop-shadow-lg">
                             simplyskin
                         </Text>
                         <View className="w-2 h-2 bg-green-500 rounded-full mt-1" />
                     </View>
 
-                    <View className="w-10 h-10" />
-                </View>
+                    <View className="w-12 h-12" />
+                </Animated.View>
 
                 {/* Instructions */}
-                <View className="items-center mt-16 px-6">
-                    <Text className="text-white text-lg font-medium text-center">
-                    Hold the camera infront of the barcode
-                    </Text>
-                </View>
-
-                {/* Camera Frame */}
-                <View className="flex-1 items-center justify-center px-8 mb-10">
-                    <View
-                        className="border-2 border-white/50 rounded-3xl"
-                        style={{
-                            width: width * 0.8,
-                            height: width * 0.8,
-                            backgroundColor: 'transparent',
-                        }}
-                    />
-                </View>
-
-                {/* Bottom Section */}
-                <View className="pb-8">
-                    <View className="items-center h-20">     
-                    </View>
-                </View>
-                
-            </SafeAreaView>
-            </View>
-
-            {/* Loading overlay */}
-            {scanLoading && (
                 <Animated.View
-                    className="absolute inset-0 bg-black/80 z-50 justify-center items-center"
-                    style={{ opacity: fadeAnim }}
-                >
-                    <View className="items-center bg-white/10 rounded-xl p-8">
-                        <ActivityIndicator size="large" color="#fff" />
-                        <Text className="text-white text-lg font-semibold mt-4 text-center">
-                            Analyzing product...
-                        </Text>
-                        <View className="flex-row mt-4 gap-2"></View>
-                    </View>
-                </Animated.View>
-            )}
-
-            {!cameraOn && (
-                <Animated.View
-                    className="flex-1 pt-1"
+                    className="items-center mt-12 px-6"
                     style={{
-                        opacity: fadeAnim,
-                        transform: [
-                            { translateY: slideAnim },
-                            { scale: scaleAnim },
-                        ],
+                        transform: [{ translateY: slideAnim }],
                     }}
                 >
-                    {/* Header section */}
-                    <View className="flex-row justify-between items-center mb-5">
-                        <Text className="text-white text-2xl font-bold">
-                            Recent Products
+                    <View className="bg-black/40 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/20">
+                        <Text className="text-white text-lg font-medium text-center">
+                            Point camera at barcode
                         </Text>
-                        <TouchableOpacity
-                            onPress={handleScanPress}
-                            className="bg-primary px-4 py-3 rounded-full flex-row items-center gap-2 shadow-lg shadow-blue-500/30"
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons
-                                name="scan-outline"
-                                size={20}
-                                color="white"
-                            />
-                            <Text className="text-white text-base font-semibold">
-                                Scan Product
-                            </Text>
-                        </TouchableOpacity>
+                        <Text className="text-white/70 text-sm text-center mt-1">
+                            Ensure good lighting and steady hands
+                        </Text>
                     </View>
-
-                    {/* Products list */}
-                    <ScrollView
-                        className="flex-1"
-                        contentContainerStyle={{
-                            
-                            paddingBottom: 20,
-                        }}
-                        showsVerticalScrollIndicator={false}
-                    >
-                        {loading ? (
-                            <View className="items-center py-10">
-                                <ActivityIndicator size="large" color="#fff" />
-                                <Text className="text-white text-lg font-semibold mt-4">
-                                    Loading products...
-                                </Text>
-                            </View>
-                        ) : (
-                            products.map((product, index) => (
-                                <Animated.View
-                                    key={product.id}
-                                    className="mb-4 rounded-2xl overflow-hidden bg-white/10"
-                                    style={{
-                                        opacity: fadeAnim,
-                                        transform: [
-                                            {
-                                                translateY:
-                                                    slideAnim.interpolate({
-                                                        inputRange: [0, 50],
-                                                        outputRange: [
-                                                            0,
-                                                            50 + index * 10,
-                                                        ],
-                                                    }),
-                                            },
-                                        ],
-                                    }}
-                                >
-                                    <TouchableOpacity
-                                        onPress={() => {
-                                            setSelectedProduct(product);
-                                            sheetRef.current?.show();
-                                        }}
-                                        className="flex-row p-4 items-center"
-                                        activeOpacity={0.8}
-                                    >
-                                        {product.image? (<Image
-                                            source={{ uri: product.image }}
-                                            className="w-16 h-16 rounded-xl mr-4"
-                                            resizeMode="cover"
-                                        />) : (
-                                        <View className="w-16 h-16 bg-slate-300 rounded-xl mr-4 items-center justify-center">
-                                            <MaterialCommunityIcons name="hand-wash-outline" size={40} className="items-center justify-center"/> 
-                                        </View>)}
-                                        <View className="flex-1 mr-4">
-                                            <Text
-                                                className="text-white text-base font-semibold mb-1"
-                                                numberOfLines={2}
-                                            >
-                                                {product.product}
-                                            </Text>
-                                            <Text
-                                                className="text-white/70 text-sm"
-                                                numberOfLines={1}
-                                            >
-                                                {product.brand}
-                                            </Text>
-                                        </View>
-                                        <View className="items-center">
-                                            <RatingCircle
-                                                size={50}
-                                                rating={product.rating}
-                                            />
-                                        </View>
-                                    </TouchableOpacity>
-                                </Animated.View>
-                            ))
-                        )}
-                    </ScrollView>
                 </Animated.View>
-            )}
 
-            <ProductSheet selectedProduct={selectedProduct} ref={sheetRef} />
-        </View>
+                {/* Camera Frame */}
+                <View className="flex-1 items-center justify-center px-8 mb-20 bottom-16">
+                    <Animated.View
+                        style={[
+                            {
+                                width: width * 0.8,
+                                height: width * 0.6,
+                                backgroundColor: 'transparent',
+                                transform: [{ translateY: slideAnim }],
+                            },
+                        ]}
+                        className="border-2 border-white/70 rounded-3xl relative"
+                    ></Animated.View>
+                </View>
+            </SafeAreaView>
+        </Animated.View>
     );
 };
 

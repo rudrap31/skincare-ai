@@ -8,8 +8,10 @@ import HomeScreen from '../screens/HomeScreen';
 import { ActivityIndicator, View } from 'react-native';
 import ProfileScreen from '../screens/ProfileScreen';
 import ScanResultsScreen from '../components/home/FaceResults';
-import ImagePickerExample from '../components/home/ImagePicker';
 import ChartsPage from '../components/home/ChartsPage';
+import ProductScanner from '../components/home/ProductScanner';
+import CameraScanScreen from '../components/home/ImagePicker';
+import MainDashboard from '../components/home/MainDashboard';
 
 const Stack = createNativeStackNavigator();
 
@@ -43,11 +45,13 @@ export default function AppNavigator() {
             ) : (
                 <>
                     {/* Signed in and done onboarding */}
-                    <Stack.Screen name="Home" component={HomeScreen} />
+                    <Stack.Screen name="Home" component={MainDashboard} />
                     <Stack.Screen name="Profile" component={ProfileScreen} />
-                    <Stack.Screen name="ImagePicker" component={ImagePickerExample} />
+                    <Stack.Screen name="ImagePicker" component={CameraScanScreen} />
+                    <Stack.Screen name="BarcodePicker" component={ProductScanner} />
                     <Stack.Screen name="ScanResults" component={ScanResultsScreen} />
                     <Stack.Screen name="Charts" component={ChartsPage} />
+                    <Stack.Screen name="Products" component={ProductScanner} />
                 </>
             )}
         </Stack.Navigator>
