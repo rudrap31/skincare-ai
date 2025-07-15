@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     View,
     Text,
@@ -9,6 +9,7 @@ import {
     Animated,
     Dimensions,
     Modal,
+    Button,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -21,8 +22,7 @@ import { getScoreColor } from '../../utils/helpers';
 import { useScannedProductsStore } from '../../store/scannedProductsStore';
 import RatingCircle from '../RatingCircle';
 import ProductSheet from './ProductSheet';
-import ProductScanner from './ProductScanner';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 
 const { width } = Dimensions.get('window');
 
@@ -30,7 +30,7 @@ const MainDashboard = ({ route }) => {
     const navigation = useNavigation();
     const { user } = useAuth();
     const userName = user?.name;
-    
+
     // Face Analysis State
     const [hasRecentScan, setHasRecentScan] = useState(false);
     const [loadingScans, setLoadingScans] = useState(false);
@@ -44,10 +44,14 @@ const MainDashboard = ({ route }) => {
     ]);
 
     // Product Scanner State
-    const { fetchScannedProducts, products, loading } = useScannedProductsStore();
+    const { fetchScannedProducts, products, loading } =
+        useScannedProductsStore();
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showProductListModal, setShowProductListModal] = useState(false);
+
+    // Bottom Sheet State
     const sheetRef = useRef(null);
+    const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
 
     // Animation values
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -74,6 +78,11 @@ const MainDashboard = ({ route }) => {
             }),
         ]).start();
     }, []);
+
+    // Bottom Sheet change handler
+    const handleSheetChanges = (index) => {
+        setIsBottomSheetOpen(index >= 0);
+    };
 
     // Face Analysis Functions
     const fetchRecentResults = async () => {
@@ -158,7 +167,10 @@ const MainDashboard = ({ route }) => {
                                 signedUrl = urlData.signedUrl;
                             }
                         } catch (urlError) {
-                            console.error('Exception generating signed URL:', urlError);
+                            console.error(
+                                'Exception generating signed URL:',
+                                urlError
+                            );
                         }
                     }
 
@@ -197,9 +209,15 @@ const MainDashboard = ({ route }) => {
         });
     };
 
-    const handleProductPress = (product) => {
+    const handleOpenPress = (product) => {
         setSelectedProduct(product);
-        sheetRef.current?.show();
+        sheetRef.current?.expand();
+    };
+
+    const handleOpenPressModal = (product) => {
+        setShowProductListModal(false);
+        setSelectedProduct(product);
+        sheetRef.current?.expand();
     };
 
     const handleRefreshScans = () => {
@@ -215,20 +233,22 @@ const MainDashboard = ({ route }) => {
     useFocusEffect(
         React.useCallback(() => {
             if (user?.id) {
-    //            fetchRecentScans();
+                //  fetchRecentScans()
                 fetchScannedProducts(user.id);
             }
-            
+
             // Handle scanned product from ProductScanner screen
-            if (route.params?.hasOwnProperty('scannedProduct') && route.params.scannedProduct !== undefined) {
+            if (
+                route.params?.hasOwnProperty('scannedProduct') &&
+                route.params.scannedProduct !== undefined
+            ) {
                 const scannedProduct = route.params?.scannedProduct;
                 setSelectedProduct(scannedProduct);
-                sheetRef.current?.show();
+                sheetRef.current?.expand();
                 navigation.setParams({ scannedProduct: undefined });
             }
         }, [user?.id, route.params?.scannedProduct])
     );
-
 
     useEffect(() => {
         fetchRecentResults();
@@ -237,19 +257,25 @@ const MainDashboard = ({ route }) => {
     // Helper Functions
     const getTrendIcon = (trend) => {
         switch (trend) {
-            case 'up': return 'trending-up';
-            case 'down': return 'trending-down';
+            case 'up':
+                return 'trending-up';
+            case 'down':
+                return 'trending-down';
             case 'stable':
-            default: return 'remove-outline';
+            default:
+                return 'remove-outline';
         }
     };
 
     const getTrendColor = (trend) => {
         switch (trend) {
-            case 'up': return '#10B981';
-            case 'down': return '#EF4444';
+            case 'up':
+                return '#10B981';
+            case 'down':
+                return '#EF4444';
             case 'stable':
-            default: return '#6B7280';
+            default:
+                return '#6B7280';
         }
     };
 
@@ -259,7 +285,9 @@ const MainDashboard = ({ route }) => {
             return (
                 <View className="items-center justify-center py-8">
                     <ActivityIndicator size="small" color="#8B5CF6" />
-                    <Text className="text-gray-400 text-sm mt-2">Loading scans...</Text>
+                    <Text className="text-gray-400 text-sm mt-2">
+                        Loading scans...
+                    </Text>
                 </View>
             );
         }
@@ -267,7 +295,9 @@ const MainDashboard = ({ route }) => {
         if (scanError) {
             return (
                 <View className="items-center justify-center py-8">
-                    <Text className="text-red-400 text-sm mb-2">Failed to load scans</Text>
+                    <Text className="text-red-400 text-sm mb-2">
+                        Failed to load scans
+                    </Text>
                     <TouchableOpacity
                         onPress={handleRefreshScans}
                         className="bg-purple-600 px-4 py-2 rounded-lg"
@@ -282,14 +312,22 @@ const MainDashboard = ({ route }) => {
             return (
                 <View className="items-center justify-center py-8">
                     <Icon name="camera-outline" size={32} color="#6B7280" />
-                    <Text className="text-gray-400 text-lg mt-2">No scans yet</Text>
-                    <Text className="text-gray-500 text-sm">Take your first scan to get started</Text>
+                    <Text className="text-gray-400 text-lg mt-2">
+                        No scans yet
+                    </Text>
+                    <Text className="text-gray-500 text-sm">
+                        Take your first scan to get started
+                    </Text>
                 </View>
             );
         }
 
         return (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-2">
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="-mx-2"
+            >
                 {recentScans.map((scan) => (
                     <TouchableOpacity
                         key={scan.data.id}
@@ -306,24 +344,31 @@ const MainDashboard = ({ route }) => {
                                 />
                             ) : (
                                 <View className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 items-center justify-center">
-                                    <Text className="text-white text-xs font-bold">SCAN</Text>
+                                    <Text className="text-white text-xs font-bold">
+                                        SCAN
+                                    </Text>
                                 </View>
                             )}
-                            
+
                             {scan.data.overall && (
                                 <View className="absolute top-1 left-1 bg-black/90 rounded px-1">
                                     <Text
                                         className="text-sm font-bold"
-                                        style={{ color: getScoreColor(scan.data.overall) }}
+                                        style={{
+                                            color: getScoreColor(
+                                                scan.data.overall
+                                            ),
+                                        }}
                                     >
                                         {Math.round(scan.data.overall)}
                                     </Text>
                                 </View>
                             )}
-                            
+
                             <View className="absolute bottom-0 left-0 right-0 bg-black/40 px-1">
                                 <Text className="text-white font-semibold text-sm text-center">
-                                    {scan.data.date.getMonth() + 1}/{scan.data.date.getDate()}
+                                    {scan.data.date.getMonth() + 1}/
+                                    {scan.data.date.getDate()}
                                 </Text>
                             </View>
                         </View>
@@ -338,7 +383,9 @@ const MainDashboard = ({ route }) => {
             return (
                 <View className="items-center py-6">
                     <ActivityIndicator size="small" color="#8B5CF6" />
-                    <Text className="text-gray-400 text-sm mt-2">Loading products...</Text>
+                    <Text className="text-gray-400 text-sm mt-2">
+                        Loading products...
+                    </Text>
                 </View>
             );
         }
@@ -347,18 +394,26 @@ const MainDashboard = ({ route }) => {
             return (
                 <View className="items-center justify-center py-8">
                     <Icon name="scan-outline" size={32} color="#6B7280" />
-                    <Text className="text-gray-400 text-sm mt-2">No products scanned</Text>
-                    <Text className="text-gray-500 text-xs">Scan your first product to get started</Text>
+                    <Text className="text-gray-400 text-sm mt-2">
+                        No products scanned
+                    </Text>
+                    <Text className="text-gray-500 text-xs">
+                        Scan your first product to get started
+                    </Text>
                 </View>
             );
         }
 
         return (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-2">
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="-mx-2"
+            >
                 {products.slice(0, 5).map((product, index) => (
                     <TouchableOpacity
                         key={product.id}
-                        onPress={() => handleProductPress(product)}
+                        onPress={() => handleOpenPress(product)}
                         className="mx-2"
                         activeOpacity={0.8}
                     >
@@ -371,21 +426,30 @@ const MainDashboard = ({ route }) => {
                                 />
                             ) : (
                                 <View className="w-full h-20 bg-slate-300 rounded-lg mb-2 items-center justify-center">
-                                    <MaterialCommunityIcons 
-                                        name="hand-wash-outline" 
-                                        size={24} 
+                                    <MaterialCommunityIcons
+                                        name="hand-wash-outline"
+                                        size={24}
                                         color="#6B7280"
                                     />
                                 </View>
                             )}
-                            <Text className="text-white text-xs font-medium mb-1" numberOfLines={2}>
+                            <Text
+                                className="text-white text-xs font-medium mb-1"
+                                numberOfLines={2}
+                            >
                                 {product.product}
                             </Text>
-                            <Text className="text-gray-400 text-xs mb-2" numberOfLines={1}>
+                            <Text
+                                className="text-gray-400 text-xs mb-2"
+                                numberOfLines={1}
+                            >
                                 {product.brand}
                             </Text>
                             <View className="items-center">
-                                <RatingCircle size={50} rating={product.rating} />
+                                <RatingCircle
+                                    size={50}
+                                    rating={product.rating}
+                                />
                             </View>
                         </View>
                     </TouchableOpacity>
@@ -401,27 +465,37 @@ const MainDashboard = ({ route }) => {
             animationType="slide"
             transparent={true}
             onRequestClose={() => setShowProductListModal(false)}
+            supportedOrientations={['portrait']}
+            presentationStyle="overFullScreen"
         >
-            {/* Backdrop overlay */}
-            <View className="flex-1 bg-black/50 justify-center items-center p-4">
-                {/* Modal content container */}
-                <View className="bg-[#161b21] rounded-xl w-full max-w-lg h-5/6 shadow-2xl">
+            <TouchableOpacity
+                className="flex-1 bg-black/50 justify-center items-center p-4"
+                activeOpacity={1}
+                onPress={() => setShowProductListModal(false)}
+            >
+                <TouchableOpacity
+                    className="bg-[#161b21] rounded-xl w-full max-w-lg h-5/6 shadow-2xl"
+                    activeOpacity={1}
+                    onPress={() => {}} // Prevent event bubbling
+                >
                     {/* Header with close button */}
                     <View className="flex-row justify-between items-center p-4 mx-2 mt-2">
-                        <Text className="text-white text-xl font-semibold">Recently Scanned Products</Text>
+                        <Text className="text-white text-xl font-semibold">
+                            Recently Scanned Products
+                        </Text>
                         <TouchableOpacity
                             className="p-2 bg-gray-800 rounded-full"
                             onPress={() => setShowProductListModal(false)}
+                            activeOpacity={0.7}
                         >
-                             <Icon name="close" size={20} color="white" />
+                            <Icon name="close" size={20} color="white" />
                         </TouchableOpacity>
                     </View>
-                    
+
                     {/* Modal body content */}
                     <ScrollView
                         className="flex-1 p-4"
                         contentContainerStyle={{
-                            
                             paddingBottom: 20,
                         }}
                         showsVerticalScrollIndicator={false}
@@ -438,21 +512,29 @@ const MainDashboard = ({ route }) => {
                                 <Animated.View
                                     key={product.id}
                                     className="mb-4 rounded-2xl bg-[#2f343a]"
-                                    
                                 >
                                     <TouchableOpacity
-                                        onPress={() => handleProductPress(product)}
+                                        onPress={() =>
+                                            handleOpenPressModal(product)
+                                        }
                                         className="flex-row p-4 items-center"
                                         activeOpacity={0.8}
                                     >
-                                        {product.image? (<Image
-                                            source={{ uri: product.image }}
-                                            className="w-16 h-16 rounded-xl mr-4"
-                                            resizeMode="cover"
-                                        />) : (
-                                        <View className="w-16 h-16 bg-slate-300 rounded-xl mr-4 items-center justify-center">
-                                            <MaterialCommunityIcons name="hand-wash-outline" size={40} className="items-center justify-center"/> 
-                                        </View>)}
+                                        {product.image ? (
+                                            <Image
+                                                source={{ uri: product.image }}
+                                                className="w-16 h-16 rounded-xl mr-4"
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <View className="w-16 h-16 bg-slate-300 rounded-xl mr-4 items-center justify-center">
+                                                <MaterialCommunityIcons
+                                                    name="hand-wash-outline"
+                                                    size={40}
+                                                    color="#6B7280"
+                                                />
+                                            </View>
+                                        )}
                                         <View className="flex-1 mr-4">
                                             <Text
                                                 className="text-white text-base font-semibold mb-1"
@@ -467,32 +549,15 @@ const MainDashboard = ({ route }) => {
                                                 {product.brand}
                                             </Text>
                                         </View>
-                                        <View className="items-center">
-                                            
-                                        </View>
                                     </TouchableOpacity>
                                 </Animated.View>
                             ))
                         )}
                     </ScrollView>
-                </View>
-            </View>
-            <ProductSheet selectedProduct={selectedProduct} ref={sheetRef} />
+                </TouchableOpacity>
+            </TouchableOpacity>
         </Modal>
-    ); 
-    // if (showProductScanner) {
-    //     return (
-    //         <ProductScanner 
-    //             onProductScanned={(product) => {
-    //                 setSelectedProduct(product);
-    //                 setShowProductScanner(false);
-    //                 if (product) {
-    //                     sheetRef.current?.show();
-    //                 }
-    //             }}
-    //         />
-    //     );
-    // }
+    );
 
     return (
         <View className="h-full">
@@ -502,15 +567,16 @@ const MainDashboard = ({ route }) => {
                 className="flex-1 px-6"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
+                scrollEnabled={!isBottomSheetOpen} // Disable scrolling when bottom sheet is open
             >
                 <Navbar />
-                
+
                 {/* Greeting */}
-                <Animated.View 
+                <Animated.View
                     className="mb-6 ml-4"
                     style={{
                         opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }]
+                        transform: [{ translateY: slideAnim }],
                     }}
                 >
                     <Text className="text-white text-2xl font-semibold">
@@ -524,11 +590,11 @@ const MainDashboard = ({ route }) => {
                 </Animated.View>
 
                 {/* Quick Actions */}
-                <Animated.View 
+                <Animated.View
                     className="flex-row mb-6 gap-3"
                     style={{
                         opacity: fadeAnim,
-                        transform: [{ scale: scaleAnim }]
+                        transform: [{ scale: scaleAnim }],
                     }}
                 >
                     <TouchableOpacity
@@ -540,43 +606,65 @@ const MainDashboard = ({ route }) => {
                             <View className="bg-purple-600 w-12 h-12 rounded-full items-center justify-center mb-2">
                                 <Icon name="camera" size={20} color="white" />
                             </View>
-                            <Text className="text-white text-sm font-semibold">Face Analysis</Text>
+                            <Text className="text-white text-sm font-semibold">
+                                Face Analysis
+                            </Text>
                         </View>
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity
-                        onPress={() => navigation.navigate("BarcodePicker")}
+                        onPress={() => navigation.navigate('BarcodePicker')}
                         className="flex-1 bg-gray-800/50 rounded-2xl p-4"
                         activeOpacity={0.8}
                     >
                         <View className="items-center">
                             <View className="bg-blue-600 w-12 h-12 rounded-full items-center justify-center mb-2">
-                                <Icon name="scan-outline" size={20} color="white" />
+                                <Icon
+                                    name="scan-outline"
+                                    size={20}
+                                    color="white"
+                                />
                             </View>
-                            <Text className="text-white text-sm font-semibold">Scan Product</Text>
+                            <Text className="text-white text-sm font-semibold">
+                                Scan Product
+                            </Text>
                         </View>
                     </TouchableOpacity>
                 </Animated.View>
 
                 {/* Skin Metrics */}
-                <Animated.View 
+                <Animated.View
                     className="bg-gray-800/50 rounded-2xl p-6 mb-6"
                     style={{
                         opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }]
+                        transform: [{ translateY: slideAnim }],
                     }}
                 >
                     <View className="flex-row justify-between items-center mb-4">
-                        <Text className="text-white text-xl font-semibold">Your Skin</Text>
-                        <TouchableOpacity onPress={() => navigation.navigate("Charts")}>
-                            <Icon name="chevron-forward" size={20} color="#9CA3AF" />
+                        <Text className="text-white text-xl font-semibold">
+                            Your Skin
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('Charts')}
+                        >
+                            <Icon
+                                name="chevron-forward"
+                                size={20}
+                                color="#9CA3AF"
+                            />
                         </TouchableOpacity>
                     </View>
 
                     {!hasRecentScan ? (
                         <View className="items-center justify-center py-8">
-                            <Icon name="analytics-outline" size={48} color="#6B7280" />
-                            <Text className="text-gray-400 text-lg mt-3">No Data Yet</Text>
+                            <Icon
+                                name="analytics-outline"
+                                size={48}
+                                color="#6B7280"
+                            />
+                            <Text className="text-gray-400 text-lg mt-3">
+                                No Data Yet
+                            </Text>
                             <Text className="text-gray-500 text-sm text-center mt-1">
                                 Take your first scan to see your skin metrics
                             </Text>
@@ -586,17 +674,25 @@ const MainDashboard = ({ route }) => {
                             {skinMetrics.map((metric) => (
                                 <TouchableOpacity
                                     key={metric.name}
-                                    onPress={() => handleMetricPress(metric.name)}
+                                    onPress={() =>
+                                        handleMetricPress(metric.name)
+                                    }
                                     className="w-1/2 px-2 mb-4"
                                     activeOpacity={0.7}
                                 >
                                     <View className="bg-gray-700 rounded-xl p-4">
                                         <View className="flex-row justify-between items-center mb-2">
-                                            <Text className="text-gray-300 text-sm">{metric.name}</Text>
+                                            <Text className="text-gray-300 text-sm">
+                                                {metric.name}
+                                            </Text>
                                             <Icon
-                                                name={getTrendIcon(metric.trend)}
+                                                name={getTrendIcon(
+                                                    metric.trend
+                                                )}
                                                 size={16}
-                                                color={getTrendColor(metric.trend)}
+                                                color={getTrendColor(
+                                                    metric.trend
+                                                )}
                                             />
                                         </View>
                                         <Text className="text-white text-2xl font-bold">
@@ -606,8 +702,12 @@ const MainDashboard = ({ route }) => {
                                             <View
                                                 className="h-2 rounded-full"
                                                 style={{
-                                                    width: `${Math.min(metric.value, 100)}%`,
-                                                    backgroundColor: metric.color,
+                                                    width: `${Math.min(
+                                                        metric.value,
+                                                        100
+                                                    )}%`,
+                                                    backgroundColor:
+                                                        metric.color,
                                                 }}
                                             />
                                         </View>
@@ -619,45 +719,58 @@ const MainDashboard = ({ route }) => {
                 </Animated.View>
 
                 {/* Recent Scans */}
-                <Animated.View 
+                <Animated.View
                     className="bg-gray-800/50 rounded-2xl p-6 mb-6"
                     style={{
                         opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }]
+                        transform: [{ translateY: slideAnim }],
                     }}
                 >
-                    <Text className="text-white text-xl font-semibold mb-4">Recent Scans</Text>
+                    <Text className="text-white text-xl font-semibold mb-4">
+                        Recent Scans
+                    </Text>
                     {renderRecentScansContent()}
                 </Animated.View>
 
                 {/* Recent Products */}
-                <Animated.View 
+                <Animated.View
                     className="bg-gray-800/50 rounded-2xl p-6 mb-6"
                     style={{
                         opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }]
+                        transform: [{ translateY: slideAnim }],
                     }}
                 >
                     <View className="flex-row justify-between items-center mb-4">
-                        <Text className="text-white text-xl font-semibold">Recent Products</Text>
-                        <TouchableOpacity onPress={handleShowAllProducts}>
-                            <Icon name="chevron-forward" size={20} color="#9CA3AF" />
+                        <Text className="text-white text-xl font-semibold">
+                            Recent Products
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => handleShowAllProducts()}
+                        >
+                            <Icon
+                                name="chevron-forward"
+                                size={20}
+                                color="#9CA3AF"
+                            />
                         </TouchableOpacity>
                     </View>
                     {renderRecentProducts()}
                 </Animated.View>
 
                 {/* Daily Tip */}
-                <Animated.View 
+                <Animated.View
                     className="bg-gradient-to-r from-purple-900 to-purple-800 rounded-2xl p-6"
                     style={{
                         opacity: fadeAnim,
-                        transform: [{ scale: scaleAnim }]
+                        transform: [{ scale: scaleAnim }],
                     }}
                 >
-                    <Text className="text-white text-lg font-semibold mb-2">💡 Daily Tip</Text>
+                    <Text className="text-white text-lg font-semibold mb-2">
+                        💡 Daily Tip
+                    </Text>
                     <Text className="text-purple-200">
-                        Apply sunscreen 15-30 minutes before going outside for optimal protection against UV damage.
+                        Apply sunscreen 15-30 minutes before going outside for
+                        optimal protection against UV damage.
                     </Text>
                 </Animated.View>
             </ScrollView>
@@ -665,7 +778,18 @@ const MainDashboard = ({ route }) => {
             {/* Product List Modal */}
             {renderProductListModal()}
 
-            <ProductSheet selectedProduct={selectedProduct} ref={sheetRef} />
+            <BottomSheet
+                ref={sheetRef}
+                enablePanDownToClose={true}
+                index={-1} // Start closed
+                backgroundStyle={{ backgroundColor: '#1e1e1e' }}
+                handleIndicatorStyle={{ backgroundColor: '#d1d5db' }}
+                onChange={handleSheetChanges} // Add this callback
+            >
+                <BottomSheetView className="flex-1 py-4">
+                    <ProductSheet selectedProduct={selectedProduct} />
+                </BottomSheetView>
+            </BottomSheet>
         </View>
     );
 };
