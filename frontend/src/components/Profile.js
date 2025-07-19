@@ -14,6 +14,7 @@ import { supabase } from '../supabase/supabase';
 import Toast from 'react-native-toast-message';
 import GradientBackground from './GradientBackground';
 import Navbar from './Navbar';
+import ContactUsModal from './ContactUs';
 
 const Profile = () => {
     const { user, signOut } = useAuth();
@@ -30,6 +31,7 @@ const Profile = () => {
         memberLevel: 'Bronze',
     });
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showContactModal, setShowContactModal] = useState(false);
 
     useEffect(() => {
         if (user) {
@@ -441,11 +443,7 @@ const Profile = () => {
                     title="Help & Support"
                     subtitle="Contact Us"
                     onPress={() => {
-                        Toast.show({
-                            type: 'info',
-                            text1: 'Help & Support',
-                            text2: 'Feature coming soon!',
-                        });
+                        setShowContactModal(true);
                     }}
                 />
                 <MenuButton
@@ -467,6 +465,10 @@ const Profile = () => {
             <EditSkinProfileModal
                 visible={showEditModal}
                 onClose={() => setShowEditModal(false)}
+            />
+            <ContactUsModal
+                visible={showContactModal}
+                onClose={() => setShowContactModal(false)}
             />
         </ScrollView>
     );
