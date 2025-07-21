@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { View, TextInput, Text, TouchableOpacity } from 'react-native';
-import GradientBackground from '../components/GradientBackground';
+import { View, TextInput, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from 'react-native-toast-message';
@@ -10,30 +10,55 @@ const SignupScreen = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const navigation = useNavigation();
     const { signUp } = useAuth();
 
+    const validateEmail = (email) => {
+        return email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+    };
+
     const handleSignup = async () => {
-        if (!email) {
+        if (!email.trim()) {
             Toast.show({
                 type: 'error',
                 position: 'top',
-                text1: 'Missing Email!',
-                text2: 'Please enter your email to sign up.',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-                text2Style: { fontSize: 12, textAlign: 'center' },
+                text1: 'Email Required',
+                text2: 'Please enter your email address',
+                visibilityTime: 2000,
             });
             return;
         }
 
-        if (!password || !confirmPassword) {
+        if (!validateEmail(email.trim())) {
             Toast.show({
                 type: 'error',
                 position: 'top',
-                text1: 'Missing Password!',
-                text2: 'Please enter and confirm your password.',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-                text2Style: { fontSize: 12, textAlign: 'center' },
+                text1: 'Invalid Email',
+                text2: 'Please enter a valid email address',
+                visibilityTime: 2000,
+            });
+            return;
+        }
+
+        if (!password.trim()) {
+            Toast.show({
+                type: 'error',
+                position: 'top',
+                text1: 'Password Required',
+                text2: 'Please enter a password',
+                visibilityTime: 2000,
+            });
+            return;
+        }
+
+        if (password.length < 6) {
+            Toast.show({
+                type: 'error',
+                position: 'top',
+                text1: 'Password Too Short',
+                text2: 'Password must be at least 6 characters',
+                visibilityTime: 2000,
             });
             return;
         }
@@ -42,103 +67,170 @@ const SignupScreen = () => {
             Toast.show({
                 type: 'error',
                 position: 'top',
-                text1: "Passwords Don't Match!",
-                text2: 'Please make sure both passwords are the same.',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-                text2Style: { fontSize: 12, textAlign: 'center' },
+                text1: "Passwords Don't Match",
+                text2: 'Please make sure both passwords are identical',
+                visibilityTime: 2000,
             });
             return;
         }
 
+        setIsLoading(true);
         try {
-            const { data, error } = await signUp({ email, password });
+            const { error } = await signUp({ email: email.trim(), password });
 
             if (error) throw error;
 
             Toast.show({
                 type: 'success',
                 position: 'top',
-                text1: 'Signed Up Successfully!',
-                text2: 'Please check your email to confirm your account.',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-                text2Style: { fontSize: 12, textAlign: 'center' },
+                text1: 'Account Created!',
+                text2: 'Please check your email to verify your account',
+                visibilityTime: 4000,
             });
 
-            navigation.navigate('Login');
+            navigation.navigate('Home');
         } catch (err) {
             Toast.show({
                 type: 'error',
                 position: 'top',
-                text1: 'Signup Failed!',
+                text1: 'Sign Up Failed',
                 text2: err.message || 'Something went wrong. Please try again.',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-                text2Style: { fontSize: 12, textAlign: 'center' },
+                visibilityTime: 3000,
             });
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <View className="flex-1 justify-center px-6">
-            <GradientBackground />
+        <View className="flex-1 bg-black">
+            {/* Gradient Background */}
 
-            <TouchableOpacity
-                onPress={() => navigation.popTo('Landing')}
-                className="absolute top-20 left-5"
+            <KeyboardAvoidingView 
+                className="flex-1" 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                <Ionicons name="arrow-back" size={30} color="white" />
-            </TouchableOpacity>
+                <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+                    {/* Header */}
+                    <View className="pt-14 px-6 flex-row items-center">
+                        <TouchableOpacity
+                            onPress={() => navigation.goBack()}
+                            className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+                        >
+                            <Ionicons name="arrow-back" size={20} color="white" />
+                        </TouchableOpacity>
+                        <Text className="text-white text-lg font-medium ml-4">
+                            Create Account
+                        </Text>
+                    </View>
 
-            <View className="bottom-10">
-                <Text className="text-white text-4xl font-bold mb-8 text-center">
-                    Sign Up
-                </Text>
+                    <View className="flex-1 justify-center px-6 py-8">
+                        {/* Title */}
+                        <View className="mb-8">
+                            <Text className="text-white text-3xl font-bold mb-2">
+                                Join SimplySkin
+                            </Text>
+                            <Text className="text-white/70 text-base">
+                                Create your account to start your personalized skincare journey
+                            </Text>
+                        </View>
 
-                <TextInput
-                    placeholder="Email"
-                    placeholderTextColor="#aaa"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    className="mb-8 bg-[#1a1a1a] text-white mx-4 px-4 py-3 rounded-xl border border-[#333]"
-                />
+                        {/* Form */}
+                        <View className="space-y-4 mb-8">
+                            <View>
+                                <Text className="text-white/80 text-sm mb-2 ml-1">
+                                    Email
+                                </Text>
+                                <TextInput
+                                    placeholder="Enter your email"
+                                    placeholderTextColor="#666"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoComplete="email"
+                                    className="bg-white/10 text-white px-4 py-4 rounded-2xl border border-white/20"
+                                />
+                            </View>
 
-                <TextInput
-                    placeholder="Password"
-                    placeholderTextColor="#aaa"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    className="mb-8 bg-[#1a1a1a] text-white mx-4 px-4 py-3 rounded-xl border border-[#333]"
-                />
+                            <View>
+                                <Text className="text-white/80 text-sm mb-2 ml-1">
+                                    Password
+                                </Text>
+                                <TextInput
+                                    placeholder="Create a password"
+                                    placeholderTextColor="#666"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry
+                                    autoComplete="new-password"
+                                    className="bg-white/10 text-white px-4 py-4 rounded-2xl border border-white/20"
+                                />
+                                <Text className="text-white/50 text-xs mt-1 ml-1">
+                                    Must be at least 6 characters
+                                </Text>
+                            </View>
 
-                <TextInput
-                    placeholder="Confirm Password"
-                    placeholderTextColor="#aaa"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    className="mb-8 bg-[#1a1a1a] text-white mx-4 px-4 py-3 rounded-xl border border-[#333]"
-                />
+                            <View>
+                                <Text className="text-white/80 text-sm mb-2 ml-1">
+                                    Confirm Password
+                                </Text>
+                                <TextInput
+                                    placeholder="Confirm your password"
+                                    placeholderTextColor="#666"
+                                    value={confirmPassword}
+                                    onChangeText={setConfirmPassword}
+                                    secureTextEntry
+                                    autoComplete="new-password"
+                                    className="bg-white/10 text-white px-4 py-4 rounded-2xl border border-white/20"
+                                />
+                            </View>
+                        </View>
 
-                <TouchableOpacity
-                    onPress={handleSignup}
-                    className="bg-primary mb-6 py-3 mx-4 rounded-xl items-center"
-                >
-                    <Text className="text-white font-bold text-lg">
-                        Sign Up
-                    </Text>
-                </TouchableOpacity>
+                        {/* Sign Up Button */}
+                        <TouchableOpacity
+                            onPress={handleSignup}
+                            disabled={isLoading}
+                            className={`py-4 rounded-2xl items-center mb-6 ${
+                                isLoading ? 'bg-gray-600' : 'bg-primary'
+                            }`}
+                        >
+                            {isLoading ? (
+                                <Text className="text-white font-semibold text-lg">
+                                    Creating Account...
+                                </Text>
+                            ) : (
+                                <Text className="text-white font-semibold text-lg">
+                                    Create Account
+                                </Text>
+                            )}
+                        </TouchableOpacity>
 
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('Login')}
-                    className="mx-4 rounded-xl items-center"
-                >
-                    <Text className="text-white font-semibold text-md">
-                        Already have an account?
-                    </Text>
-                </TouchableOpacity>
-            </View>
+                        {/* Terms */}
+                        <Text className="text-white/50 text-xs text-center mb-6 px-4">
+                            By creating an account, you agree to our Terms of Service and Privacy Policy
+                        </Text>
+
+                        {/* Sign In Link */}
+                        <View className="flex-row justify-center items-center">
+                            <Text className="text-white/70 text-base">
+                                Already have an account? 
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    navigation.goBack();
+                                    navigation.navigate('Login');
+                                }}
+                            >
+                                <Text className="text-primary text-base font-medium ml-1">
+                                    Sign In
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </ScrollView>
+            </KeyboardAvoidingView>
+            <Toast/>
         </View>
     );
 };

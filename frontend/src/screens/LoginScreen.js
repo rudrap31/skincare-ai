@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { View, TextInput, Text, TouchableOpacity } from 'react-native';
-import GradientBackground from '../components/GradientBackground';
+import { View, TextInput, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../context/AuthContext';
@@ -9,111 +9,159 @@ import Toast from 'react-native-toast-message';
 const LoginScreen = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const navigation = useNavigation();
-
     const { signIn } = useAuth();
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-
-        if (!email) {
+    const handleLogin = async () => {
+        if (!email.trim()) {
             Toast.show({
                 type: 'error',
                 position: 'top',
-                text1: 'Missing Email!',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-                visibilityTime: 1500,
-                autoHide: true,
+                text1: 'Email Required',
+                text2: 'Please enter your email address',
+                visibilityTime: 2000,
             });
             return;
         }
 
-        if (!password) {
+        if (!password.trim()) {
             Toast.show({
                 type: 'error',
                 position: 'top',
-                text1: 'Missing Password!',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-                visibilityTime: 1500,
-                autoHide: true,
+                text1: 'Password Required',
+                text2: 'Please enter your password',
+                visibilityTime: 2000,
             });
             return;
         }
 
+        setIsLoading(true);
         try {
-            setEmail('supersaiyanbardock8@gmail.com');
-            setPassword('tester');
-            const { data, error } = await signIn({ email, password });
-
+            const { error } = await signIn({ email: email.trim(), password });
+            
             if (error) throw error;
+            
+            // Success - navigation will be handled by AppNavigator
         } catch (error) {
-            // Show error toast if login fails
             Toast.show({
                 type: 'error',
                 position: 'top',
-                text1: 'Invalid Credentials!',
-                text1Style: { fontSize: 16, textAlign: 'center' },
-                visibilityTime: 1500,
-                autoHide: true,
+                text1: 'Sign In Failed',
+                text2: error.message || 'Invalid email or password',
+                visibilityTime: 3000,
             });
-
-            console.error('Sign in error:', error.message);
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <View className="flex-1 justify-center px-6">
-            <GradientBackground />
-            <TouchableOpacity
-                onPress={() => navigation.popTo('Landing')}
-                className="absolute top-20 left-5"
+        <View className="flex-1 bg-black">
+            {/* Gradient Background */}
+
+            <KeyboardAvoidingView 
+                className="flex-1" 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                <Ionicons name="arrow-back" size={30} color="white" />
-            </TouchableOpacity>
-
-            <View className="bottom-10">
-                <Text className="text-white text-4xl font-bold mb-8 text-center">
-                    Log In
-                </Text>
-
-                {/* Email */}
-                <TextInput
-                    placeholder="Email"
-                    placeholderTextColor="#aaa"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    className="mb-8 bg-[#1a1a1a] text-white mx-4 px-4 py-3 rounded-xl border border-[#333]"
-                />
-
-                {/* Password */}
-                <TextInput
-                    placeholder="Password"
-                    placeholderTextColor="#aaa"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    className="mb-8 bg-[#1a1a1a] text-white mx-4 px-4 py-3 rounded-xl border border-[#333]"
-                />
-
-                {/* Login Button */}
-                <TouchableOpacity
-                    onPress={handleLogin}
-                    className="bg-primary mb-6 py-3 mx-4 rounded-xl items-center"
-                >
-                    <Text className="text-white font-bold text-lg">Log In</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    onPress={() => navigation.navigate('Signup')}
-                    className="mx-4 rounded-xl items-center"
-                >
-                    <Text className="text-white font-semibold text-md">
-                        Don't have an account?
+                {/* Header */}
+                <View className="pt-14 px-6 flex-row items-center">
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
+                    >
+                        <Ionicons name="arrow-back" size={20} color="white" />
+                    </TouchableOpacity>
+                    <Text className="text-white text-lg font-medium ml-4">
+                        Sign In
                     </Text>
-                </TouchableOpacity>
-            </View>
+                </View>
+
+                <View className="flex-1 justify-center px-6">
+                    {/* Title */}
+                    <View className="mb-8">
+                        <Text className="text-white text-3xl font-bold mb-2">
+                            Welcome back
+                        </Text>
+                        <Text className="text-white/70 text-base">
+                            Sign in to continue your skincare journey
+                        </Text>
+                    </View>
+
+                    {/* Form */}
+                    <View className="space-y-4 mb-8">
+                        <View>
+                            <Text className="text-white/80 text-sm mb-2 ml-1">
+                                Email
+                            </Text>
+                            <TextInput
+                                placeholder="Enter your email"
+                                placeholderTextColor="#666"
+                                value={email}
+                                onChangeText={setEmail}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                                autoComplete="email"
+                                className="bg-white/10 text-white px-4 py-4 rounded-2xl border border-white/20"
+                            />
+                        </View>
+
+                        <View>
+                            <Text className="text-white/80 text-sm mb-2 ml-1">
+                                Password
+                            </Text>
+                            <TextInput
+                                placeholder="Enter your password"
+                                placeholderTextColor="#666"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                                autoComplete="password"
+                                className="bg-white/10 text-white px-4 py-4 rounded-2xl border border-white/20"
+                            />
+                        </View>
+                    </View>
+
+                    {/* Sign In Button */}
+                    <TouchableOpacity
+                        onPress={handleLogin}
+                        disabled={isLoading}
+                        className={`py-4 rounded-2xl items-center mb-6 ${
+                            isLoading ? 'bg-gray-600' : 'bg-primary'
+                        }`}
+                    >
+                        {isLoading ? (
+                            <View className="flex-row items-center">
+                                <Text className="text-white font-semibold text-lg mr-2">
+                                    Signing In...
+                                </Text>
+                            </View>
+                        ) : (
+                            <Text className="text-white font-semibold text-lg">
+                                Sign In
+                            </Text>
+                        )}
+                    </TouchableOpacity>
+
+                    {/* Sign Up Link */}
+                    <View className="flex-row justify-center items-center">
+                        <Text className="text-white/70 text-base">
+                            Don't have an account? 
+                        </Text>
+                        <TouchableOpacity
+                            onPress={() => {
+                                navigation.goBack();
+                                navigation.navigate('Signup');
+                            }}
+                        >
+                            <Text className="text-primary text-base font-medium ml-1">
+                                Sign Up
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </KeyboardAvoidingView>
+            <Toast/>
         </View>
     );
 };
