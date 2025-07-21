@@ -93,7 +93,7 @@ router.post('/', async (req, res) => {
                         Skin type: ${skin_type}. Concerns: ${skin_concerns.join(
             ', '
         )}. 
-                        Rate redness, acne, hydration and give an overall score from 1-100. Provide a detailed analysis and any tips if any.
+                        Rate redness, acne, hydration and give an overall score from 1-100. For all metrics 1 is the worst and 100 is the best. Provide a detailed analysis and any tips if any.
                         Return your response in JSON format like:
                         {
                             "redness": 65,
