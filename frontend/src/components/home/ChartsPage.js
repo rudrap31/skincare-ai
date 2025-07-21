@@ -69,7 +69,7 @@ const ChartsPage = ({ route, navigation }) => {
             if (scansError) throw scansError;
 
             // If we don't have enough data points for the time range, fall back to last N scans
-            if (!scans || scans.length < 3) {                
+            if (!scans || scans.length < 5) {                
                 const { data: fallbackScans, error: fallbackError } = await supabase
                     .from('scanned_faces')
                     .select(`
@@ -114,28 +114,32 @@ const ChartsPage = ({ route, navigation }) => {
         metrics.forEach(metric => {
             const values = scans.map(scan => scan[metric.key] || 0);
             
+            const getEvenlySpacedLabels = (scans, maxLabels = 7) => {
+                const total = scans.length;
+                if (total === 0) return [];
             
-    
-            // Create evenly spaced labels (max 5)
-            const maxLabels = 7;
-            let displayLabels;
+                const labels = new Array(total).fill('');
             
-            if (scans.length <= maxLabels) {
-                // Show all labels if we have few data points
-                displayLabels = scans.map(scan => {
-                    const date = new Date(scan.created_at);
-                    return `${date.getMonth() + 1}/${date.getDate()}`;
-                });
-            } else {
-                // Show evenly spaced labels
-                displayLabels = scans.map((scan, index) => {
-                    const date = new Date(scan.created_at);
-                    const shouldShow = index === 0 || 
-                                     index === scans.length - 1 || 
-                                     index % Math.floor(scans.length / (maxLabels - 2)) === 0;
-                    return shouldShow ? `${date.getMonth() + 1}/${date.getDate()}` : '';
-                });
-            }
+                if (total <= maxLabels) {
+                    // Show all labels
+                    for (let i = 0; i < total; i++) {
+                        const date = new Date(scans[i].created_at);
+                        labels[i] = `${date.getMonth() + 1}/${date.getDate()}`;
+                    }
+                } else {
+                    // Show maxLabels evenly spaced labels
+                    for (let i = 0; i < maxLabels; i++) {
+                        const floatIndex = (i / (maxLabels - 1)) * (total - 1);
+                        const nearestIndex = Math.round(floatIndex);
+                        const date = new Date(scans[nearestIndex].created_at);
+                        labels[nearestIndex] = `${date.getMonth() + 1}/${date.getDate()}`;
+                    }
+                }
+            
+                return labels;
+            };
+            
+            const displayLabels = getEvenlySpacedLabels(scans);
     
             processedData[metric.key] = {
                 labels: displayLabels,
