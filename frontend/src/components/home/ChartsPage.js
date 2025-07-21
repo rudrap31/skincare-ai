@@ -16,7 +16,7 @@ import { supabase } from '../../supabase/supabase';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const ChartsPage = ({ route }) => {
+const ChartsPage = ({ route, navigation }) => {
     const { selectedMetric: initialMetric = 'overall' } = route?.params || {};
     const { user } = useAuth();
     const [selectedMetric, setSelectedMetric] = useState(initialMetric);
@@ -66,14 +66,10 @@ const ChartsPage = ({ route }) => {
                 .gte('created_at', startDate.toISOString())
                 .order('created_at', { ascending: true });
 
-                console.log(scans)
-
             if (scansError) throw scansError;
 
             // If we don't have enough data points for the time range, fall back to last N scans
-            if (!scans || scans.length < 3) {
-                console.log(`Only ${scans?.length || 0} scans in ${timeRange}, fetching last 20 scans`);
-                
+            if (!scans || scans.length < 3) {                
                 const { data: fallbackScans, error: fallbackError } = await supabase
                     .from('scanned_faces')
                     .select(`
@@ -86,7 +82,7 @@ const ChartsPage = ({ route }) => {
                     `)
                     .eq('user_id', user.id)
                     .order('created_at', { ascending: false })
-                    .limit(20);
+                    .limit(5);
 
                 if (fallbackError) throw fallbackError;
                 
@@ -117,44 +113,47 @@ const ChartsPage = ({ route }) => {
     
         metrics.forEach(metric => {
             const values = scans.map(scan => scan[metric.key] || 0);
-            // Calculate min/max for padding
-            const minValue = Math.min(...values);
-            const maxValue = Math.max(...values);
-            const range = maxValue - minValue;
             
-            // Add padding (10% of range or minimum 5 points)
-            const padding = Math.max(range * 0.1, 5);
-            const paddedMin = Math.max(0, minValue - padding);
-            const paddedMax = Math.min(100, maxValue + padding);
-            // Add invisible data points to force the Y-axis range
-            const paddedData = [paddedMin, ...values, paddedMax];
-            const labels = scans.map((scan, index) => {
-                const date = new Date(scan.created_at);
-                if (isFallback || scans.length > 10) {
-                    return scans.length > 15 ? `${index + 1}` : `${date.getMonth() + 1}/${date.getDate()}`;
-                } else {
-                    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                    return days[date.getDay()];
-                }
-            });
-            const paddedLabels = ['', ...labels, ''];
-
+            
+    
+            // Create evenly spaced labels (max 5)
+            const maxLabels = 7;
+            let displayLabels;
+            
+            if (scans.length <= maxLabels) {
+                // Show all labels if we have few data points
+                displayLabels = scans.map(scan => {
+                    const date = new Date(scan.created_at);
+                    return `${date.getMonth() + 1}/${date.getDate()}`;
+                });
+            } else {
+                // Show evenly spaced labels
+                displayLabels = scans.map((scan, index) => {
+                    const date = new Date(scan.created_at);
+                    const shouldShow = index === 0 || 
+                                     index === scans.length - 1 || 
+                                     index % Math.floor(scans.length / (maxLabels - 2)) === 0;
+                    return shouldShow ? `${date.getMonth() + 1}/${date.getDate()}` : '';
+                });
+            }
+    
             processedData[metric.key] = {
-                labels: paddedLabels,
+                labels: displayLabels,
                 datasets: [{
-                    data: paddedData,
+                    data: values, // Only use actual data points, no padding
                     strokeWidth: 3,
-                    color: (opacity = 1) => metric.color.replace('#', 'rgba(') 
-                        .replace('#', '')
-                        .match(/.{2}/g)
-                        .map(hex => parseInt(hex, 16))
-                        .join(', ') + `, ${opacity})`,
-                    // Hide the padding dots
-                    withDots: true,
+                    color: (opacity = 1) => {
+                        const hex = metric.color.replace('#', '');
+                        const r = parseInt(hex.substr(0, 2), 16);
+                        const g = parseInt(hex.substr(2, 2), 16);
+                        const b = parseInt(hex.substr(4, 2), 16);
+                        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                    },
+                    withDots: true, // Show dots on actual data points
                 }]
             };
     
-            // Stats calculation remains the same
+            // Stats calculation 
             const currentValue = values[values.length - 1] || 0;
             const previousValue = values[values.length - 2] || currentValue;
             const change = values.length > 1 ? currentValue - previousValue : 0;
@@ -176,7 +175,6 @@ const ChartsPage = ({ route }) => {
     useEffect(() => {
         if (user?.id) {
             fetchChartData();
-            console.log(chartData)
         }
     }, [user?.id, timeRange]);
 
@@ -188,28 +186,71 @@ const ChartsPage = ({ route }) => {
         return stats[selectedMetric] || { current: 0, change: '0', trend: 'up', changeText: '+0%' };
     };
 
-    const chartConfig = {
-        backgroundColor: 'transparent',
-        backgroundGradientFrom: 'transparent',
-        backgroundGradientTo: 'transparent',
-        decimalPlaces: 0,
-        color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-        labelColor: (opacity = 1) => `rgba(156, 163, 175, ${opacity})`,
-        style: {
-            borderRadius: 16,
-        },
-        propsForDots: {
-            r: '6',
-            strokeWidth: '2',
-            stroke: getCurrentMetricData()?.color || '#8B5CF6',
-            fill: getCurrentMetricData()?.color || '#8B5CF6',
-        },
-        propsForBackgroundLines: {
-            strokeDasharray: '5,5',
-            stroke: '#374151',
-            strokeWidth: 1,
-        },
+    const getDynamicChartConfig = (yAxisMin = 0, yAxisMax = 100) => {
+        const currentMetric = getCurrentMetricData();
+        
+        return {
+            decimalPlaces: 0,
+            color: (opacity = 1) => {
+                const hex = currentMetric?.color.replace('#', '') || '8B5CF6';
+                const r = parseInt(hex.substring(0, 2), 16);
+                const g = parseInt(hex.substring(2, 2), 16);
+                const b = parseInt(hex.substring(4, 2), 16);
+                return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+            },
+            labelColor: (opacity = 1) => `rgba(156, 163, 175, ${opacity})`,
+            style: {
+                borderRadius: 16,
+            },
+            // Even Y-axis distribution with custom range
+            segments: 4, // For 5 Y-axis labels
+            formatYLabel: (value) => {
+                return Math.round(parseFloat(value)).toString();
+            },
+            // Custom Y-axis range
+            fromZero: false,
+            yAxisSuffix: '',
+            // Set the Y-axis bounds
+            yAxisInterval: 1,
+            // Custom styling for labels
+            propsForHorizontalLabels: {
+                fontSize: 12,
+            },
+            propsForVerticalLabels: {
+                fontSize: 11,
+            },
+            paddingLeft: 50,
+            paddingRight: 30,
+            paddingTop: 20,
+            paddingBottom: 20,
+            // Add gradient fill under the line
+            fillShadowGradient: currentMetric?.color || '#8B5CF6',
+            fillShadowGradientOpacity: 0.3,
+            fillShadowGradientFrom: currentMetric?.color || '#8B5CF6',
+            fillShadowGradientTo: 'transparent',
+            fillShadowGradientFromOpacity: 0.4,
+            fillShadowGradientToOpacity: 0.2,
+            useShadowColorFromDataset: false,
+            // Force Y-axis range
+            yLabelsOffset: 10,
+            // Custom Y-axis configuration
+            data: {
+                yAxisMin,
+                yAxisMax
+            }
+        };
     };
+
+    // Safe way to get current chart data
+    const getCurrentChartData = () => {
+        if (!chartData || !selectedMetric || !chartData[selectedMetric]) {
+            return null;
+        }
+        return chartData[selectedMetric];
+    };
+
+    const currentChartData = getCurrentChartData();
+    const dynamicChartConfig = getDynamicChartConfig();
 
     if (loading) {
         return (
@@ -278,8 +319,6 @@ const ChartsPage = ({ route }) => {
     return (
         <View className="flex-1">
             <GradientBackground />
-            
-
             <ScrollView 
                 className="flex-1 px-6"
                 showsVerticalScrollIndicator={false}
@@ -397,24 +436,23 @@ const ChartsPage = ({ route }) => {
                     <Text className="text-white text-lg font-semibold mb-4 px-2">
                         {currentMetric?.name} Trend
                     </Text>
-                    {chartData[selectedMetric] && (
+                    {currentChartData && (
                         <LineChart
-                            data={chartData[selectedMetric]}
+                            data={currentChartData}
                             width={screenWidth - 80}
-                            height={220}
-                            chartConfig={chartConfig}
+                            height={240}
+                            chartConfig={dynamicChartConfig}
                             bezier
                             style={{
                                 marginVertical: 8,
                                 borderRadius: 16,
                             }}
-                            withDots={true}
-                            withShadow={false}
-                            withInnerLines={true}
+                            withDots={false}
+                            withShadow={true}
+                            withInnerLines={false}
                             withOuterLines={false}
-                            
                             fromZero={false}
-                            hidePointsAtIndex={[0, chartData[selectedMetric].datasets[0].data.length - 1]}
+                            segments={dynamicChartConfig.segments}
                         />
                     )}
                 </View>
@@ -460,24 +498,7 @@ const ChartsPage = ({ route }) => {
                     })}
                 </View>
 
-                {/* Insights Section */}
-                <View className="bg-gradient-to-r from-purple-900 to-purple-800 rounded-2xl p-6">
-                    <Text className="text-white text-lg font-semibold mb-3">
-                        📊 Recent Insights
-                    </Text>
-                    <View className="space-y-2">
-                        {Object.entries(stats).map(([key, stat]) => {
-                            const metric = metrics.find(m => m.key === key);
-                            if (!metric || stat.current === 0) return null;
-                            
-                            return (
-                                <Text key={key} className="text-purple-200 text-sm mb-2">
-                                    • {metric.name}: {stat.current}% ({stat.changeText} from last scan)
-                                </Text>
-                            );
-                        })}
-                    </View>
-                </View>
+                
             </ScrollView>
         </View>
     );
