@@ -102,7 +102,7 @@ const ScanResultsScreen = ({
             <GradientBackground />
 
             {/* Header with back button */}
-            <View className="flex-row items-center justify-between px-6 pt-12 pb-4 mt-6">
+            <View className="flex-row items-center justify-between px-6 pt-2 pb-4 mt-6">
                 <TouchableOpacity
                     onPress={handleBack}
                     className="bg-white/10 rounded-full p-2"

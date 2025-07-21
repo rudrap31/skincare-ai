@@ -64,7 +64,7 @@ const ProductScanner = () => {
 
     const handleClose = () => {
         setCameraOn(false);
-        onClose();
+        navigation.goBack();
     };
 
     const codeScanner = useCodeScanner({
