@@ -5,23 +5,22 @@ import MaskedView from '@react-native-masked-view/masked-view';
 import { useAuth } from '../context/AuthContext';
 
 const SplashScreen = ({ onFinish }) => {
-    const { user, hasCompletedOnboarding, loading } = useAuth();
+    const { user, loading, dataLoading } = useAuth();
 
     useEffect(() => {
-        // Simulate app initialization time
+        // App initialization
         const timer = setTimeout(() => {
-            if (!loading) {
+            if (!(loading || (user && dataLoading))) {
                 onFinish();
             }
         }, 2000);
 
         return () => clearTimeout(timer);
-    }, [loading, onFinish]);
+    }, [loading, user, dataLoading, onFinish]);
 
     return (
         <View className="flex-1 justify-center items-center bg-black">
-            {/* Gradient Background */}
-            
+
             {/* App Logo/Title */}
             <View className="items-center mb-16">
                 <MaskedView
@@ -41,7 +40,7 @@ const SplashScreen = ({ onFinish }) => {
                         </Text>
                     </LinearGradient>
                 </MaskedView>
-                
+
                 <Text className="text-white/70 text-lg mt-4 text-center">
                     Your Personal Skincare Assistant Simplified
                 </Text>
