@@ -46,7 +46,7 @@ router.post('/', async (req, res) => {
 
         const signedUrl = signedUrlData.signedUrl;
 
-        const checkPrompt = `Given an image, is this a picture of a face? If it is bad lighting respond false
+        const checkPrompt = `Given an image, is this a picture of a full face? If it is bad lighting respond false
                          Respond ONLY with JSON: { "is_face": true } or { "is_face": false }.`;
 
         const checkCompletion = await openai.chat.completions.create({
