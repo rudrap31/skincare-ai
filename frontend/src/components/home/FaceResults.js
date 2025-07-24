@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -11,21 +11,18 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import GradientBackground from '../GradientBackground';
 import { getScoreColor } from '../../utils/helpers';
+import { captureRef } from 'react-native-view-shot';
+import { Share } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-const ScanResultsScreen = ({
-    navigation,
-    route,
-    // Props if passed directly, or use route.params
-    scanImage,
-    scanResults,
-}) => {
-    // Get data from route params or props
+const ScanResultsScreen = ({ navigation, route, scanImage, scanResults }) => {
     const image = scanImage || route?.params?.scanImage;
     const results = scanResults || route?.params?.scanResults;
 
-    // Animation refs for progress bars
+    // State to control when branding should be visible
+    const [isCapturing, setIsCapturing] = useState(false);
+
     const progressAnimations = useRef({
         redness: new Animated.Value(0),
         hydration: new Animated.Value(0),
@@ -33,24 +30,51 @@ const ScanResultsScreen = ({
         overall: new Animated.Value(0),
     }).current;
 
-    // Mock data structure - replace with your actual API response
     const defaultResults = {
         acne: 5,
-        analysis: "Your skin shows moderate redness, mostly around the cheeks and nose, which is consistent with your sensitive skin type. There are a few visible active acne spots and some lingering post-inflammatory marks and hyperpigmentation, mainly on the cheeks and jawline.",
+        analysis:
+            'Your skin shows moderate redness, mostly around the cheeks and nose, which is consistent with your sensitive skin type. There are a few visible active acne spots and some lingering post-inflammatory marks and hyperpigmentation, mainly on the cheeks and jawline.',
         hydration: 7,
         overall: 6.2,
         redness: 6.8,
         tips: [
-            "Use a gentle, fragrance-free cleanser suitable for sensitive skin to avoid further irritation.",
-            "Incorporate a hydrating serum with glycerin or hyaluronic acid after cleansing.",
-            "Spot-treat acne with a mild product containing salicylic acid or benzoyl peroxide, used sparingly."
-        ]
+            'Use a gentle, fragrance-free cleanser suitable for sensitive skin to avoid further irritation.',
+            'Incorporate a hydrating serum with glycerin or hyaluronic acid after cleansing.',
+            'Spot-treat acne with a mild product containing salicylic acid or benzoyl peroxide, used sparingly.',
+        ],
     };
 
+    const shareViewRef = useRef();
     const finalResults = results || defaultResults;
 
+    const shareResult = async () => {
+        try {
+            // Show branding before capturing (off-screen)
+            setIsCapturing(true);
+
+            // Small delay to ensure the branding renders
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            const uri = await captureRef(shareViewRef, {
+                format: 'png',
+                quality: 0.9,
+                result: 'tmpfile',
+            });
+
+            // Hide branding after capturing
+            setIsCapturing(false);
+
+            await Share.share({
+                url: uri,
+                title: 'My Skin Scan Results',
+            });
+        } catch (error) {
+            console.error('Error sharing result:', error);
+            setIsCapturing(false);
+        }
+    };
+
     useEffect(() => {
-        // Animate progress bars on mount
         const animations = Object.keys(progressAnimations).map((key) =>
             Animated.timing(progressAnimations[key], {
                 toValue: finalResults[key] || 0,
@@ -65,20 +89,19 @@ const ScanResultsScreen = ({
 
     const handleBack = () => {
         if (navigation) {
-            navigation.popTo("Home");
+            navigation.popTo('Home');
         }
     };
 
     const ScoreCard = ({ score, label, animatedValue }) => {
         return (
-            <View className=" flex-1 mx-2 bg-white/10 p-4 rounded-xl">
+            <View className="flex-1 mx-2 bg-white/10 p-4 rounded-xl">
                 <Text className="text-white text-md font-medium mb-1">
                     {label}
                 </Text>
                 <Text className="text-white text-3xl font-bold mb-2">
                     {score}
                 </Text>
-                {/* Progress bar */}
                 <View className="w-full h-2 bg-gray-700 rounded-full">
                     <Animated.View
                         className="h-2 rounded-full"
@@ -88,8 +111,7 @@ const ScanResultsScreen = ({
                                 outputRange: ['0%', '100%'],
                                 extrapolate: 'clamp',
                             }),
-                            backgroundColor:
-                                getScoreColor(score)
+                            backgroundColor: getScoreColor(score),
                         }}
                     />
                 </View>
@@ -101,19 +123,26 @@ const ScanResultsScreen = ({
         <View className="flex-1">
             <GradientBackground />
 
-            {/* Header with back button */}
-            <View className="flex-row items-center justify-between px-6 pt-2 pb-4 mt-6">
-                <TouchableOpacity
-                    onPress={handleBack}
-                    className="bg-white/10 rounded-full p-2"
-                >
-                    <Icon name="arrow-back" size={24} color="white" />
-                </TouchableOpacity>
-                <Text className="text-white text-xl font-semibold">
-                    Scan Results
-                </Text>
-                <View className="w-10" />
-            </View>
+            {/* Header - only show when not capturing */}
+            {!isCapturing && (
+                <View className="flex-row items-center justify-between px-6 pt-2 pb-4 mt-6">
+                    <TouchableOpacity
+                        onPress={handleBack}
+                        className="bg-white/10 rounded-full p-2"
+                    >
+                        <Icon name="arrow-back" size={24} color="white" />
+                    </TouchableOpacity>
+                    <Text className="text-white text-xl font-semibold">
+                        Scan Results
+                    </Text>
+                    <TouchableOpacity
+                        onPress={shareResult}
+                        className="bg-white/10 rounded-full p-2"
+                    >
+                        <Icon name="share-outline" size={24} color="white" />
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <ScrollView
                 className="flex-1"
@@ -147,7 +176,6 @@ const ScanResultsScreen = ({
                                 label="Redness"
                                 animatedValue={progressAnimations.redness}
                             />
-
                             <ScoreCard
                                 score={finalResults.hydration}
                                 label="Hydration"
@@ -179,33 +207,28 @@ const ScanResultsScreen = ({
                             </Text>
                         </View>
 
-                        {/* Analysis Text */}
                         <Text className="text-gray-200 text-base leading-6 mb-6">
                             {finalResults.analysis}
                         </Text>
 
-                        {/* Recommendations */}
-                        {finalResults.tips &&
-                            finalResults.tips.length > 0 && (
-                                <View>
-                                    <Text className="text-white text-lg font-semibold mb-3">
-                                        Recommendations:
-                                    </Text>
-                                    {finalResults.tips.map(
-                                        (tip, index) => (
-                                            <View
-                                                key={index}
-                                                className="flex-row items-start mb-2"
-                                            >
-                                                <View className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3" />
-                                                <Text className="text-gray-200 text-base flex-1">
-                                                    {tip}
-                                                </Text>
-                                            </View>
-                                        )
-                                    )}
-                                </View>
-                            )}
+                        {finalResults.tips && finalResults.tips.length > 0 && (
+                            <View>
+                                <Text className="text-white text-lg font-semibold mb-3">
+                                    Recommendations:
+                                </Text>
+                                {finalResults.tips.map((tip, index) => (
+                                    <View
+                                        key={index}
+                                        className="flex-row items-start mb-2"
+                                    >
+                                        <View className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3" />
+                                        <Text className="text-gray-200 text-base flex-1">
+                                            {tip}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -213,14 +236,205 @@ const ScanResultsScreen = ({
                 <View className="px-6">
                     <TouchableOpacity
                         onPress={handleBack}
-                        className="bg-purple-600 rounded-2xl py-4 items-center"
+                        className="bg-purple-600 rounded-2xl py-4 items-center mb-4"
                     >
                         <Text className="text-white text-lg font-semibold">
                             Done
                         </Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={shareResult}
+                        className="bg-[#242128] rounded-2xl py-4 items-center"
+                    >
+                        <Text className="text-white text-lg font-semibold">
+                            Share Results
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
+
+            {/* Hidden off-screen shareable content */}
+            <View
+                style={{
+                    position: 'absolute',
+                    top: -10000, // Move way off screen
+                    left: 0,
+                    width: 400,
+                    opacity: isCapturing ? 1 : 0, // Only render when capturing
+                }}
+            >
+                <View
+                    ref={shareViewRef}
+                    collapsable={false}
+                    style={{
+                        paddingTop: 20,
+                        paddingBottom: 20,
+                        backgroundColor: 'transparent',
+                    }}
+                >
+                    {/* Gradient Background for captured image */}
+                    <View
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                        }}
+                    >
+                        <GradientBackground />
+                    </View>
+
+                    {/* Branding Header */}
+                    <View
+                        className="items-center mb-6 px-6"
+                        style={{ zIndex: 1 }}
+                    >
+                        <View className="flex-row items-center">
+                            <Icon name="medical" size={28} color="#8B5CF6" />
+                            <Text className="text-white text-2xl font-bold ml-2">
+                                simplyskin
+                            </Text>
+                            <Text className="text-gray-300 text-sm mt-1">
+                                Your Skin Analysis Results
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Face Image */}
+                    <View
+                        className="items-center px-6 mb-8"
+                        style={{ zIndex: 1 }}
+                    >
+                        <View className="w-48 h-48 rounded-full overflow-hidden bg-gray-800 items-center justify-center mb-6">
+                            {image ? (
+                                <Image
+                                    source={{ uri: image }}
+                                    className="w-full h-full"
+                                    resizeMode="cover"
+                                />
+                            ) : (
+                                <View className="items-center">
+                                    <Icon
+                                        name="person"
+                                        size={80}
+                                        color="#9CA3AF"
+                                    />
+                                    <Text className="text-gray-400 mt-2">
+                                        Scan Image
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Score Cards Grid - Static values for sharing */}
+                        <View className="bg-black/30 rounded-3xl p-6 w-full max-w-sm">
+                            <View className="flex-row justify-between mb-4">
+                                <View className="flex-1 mx-2 bg-white/10 p-4 rounded-xl">
+                                    <Text className="text-white text-md font-medium mb-1">
+                                        Redness
+                                    </Text>
+                                    <Text className="text-white text-3xl font-bold mb-2">
+                                        {finalResults.redness}
+                                    </Text>
+                                    <View className="w-full h-2 bg-gray-700 rounded-full">
+                                        <View
+                                            className="h-2 rounded-full"
+                                            style={{
+                                                width: `${Math.min(
+                                                    finalResults.redness,
+                                                    100
+                                                )}%`,
+                                                backgroundColor: getScoreColor(
+                                                    finalResults.redness
+                                                ),
+                                            }}
+                                        />
+                                    </View>
+                                </View>
+                                <View className="flex-1 mx-2 bg-white/10 p-4 rounded-xl">
+                                    <Text className="text-white text-md font-medium mb-1">
+                                        Hydration
+                                    </Text>
+                                    <Text className="text-white text-3xl font-bold mb-2">
+                                        {finalResults.hydration}
+                                    </Text>
+                                    <View className="w-full h-2 bg-gray-700 rounded-full">
+                                        <View
+                                            className="h-2 rounded-full"
+                                            style={{
+                                                width: `${Math.min(
+                                                    finalResults.hydration,
+                                                    100
+                                                )}%`,
+                                                backgroundColor: getScoreColor(
+                                                    finalResults.hydration
+                                                ),
+                                            }}
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+                            <View className="flex-row justify-between">
+                                <View className="flex-1 mx-2 bg-white/10 p-4 rounded-xl">
+                                    <Text className="text-white text-md font-medium mb-1">
+                                        Acne
+                                    </Text>
+                                    <Text className="text-white text-3xl font-bold mb-2">
+                                        {finalResults.acne}
+                                    </Text>
+                                    <View className="w-full h-2 bg-gray-700 rounded-full">
+                                        <View
+                                            className="h-2 rounded-full"
+                                            style={{
+                                                width: `${Math.min(
+                                                    finalResults.acne,
+                                                    100
+                                                )}%`,
+                                                backgroundColor: getScoreColor(
+                                                    finalResults.acne
+                                                ),
+                                            }}
+                                        />
+                                    </View>
+                                </View>
+                                <View className="flex-1 mx-2 bg-white/10 p-4 rounded-xl">
+                                    <Text className="text-white text-md font-medium mb-1">
+                                        Overall
+                                    </Text>
+                                    <Text className="text-white text-3xl font-bold mb-2">
+                                        {finalResults.overall}
+                                    </Text>
+                                    <View className="w-full h-2 bg-gray-700 rounded-full">
+                                        <View
+                                            className="h-2 rounded-full"
+                                            style={{
+                                                width: `${Math.min(
+                                                    finalResults.overall,
+                                                    100
+                                                )}%`,
+                                                backgroundColor: getScoreColor(
+                                                    finalResults.overall
+                                                ),
+                                            }}
+                                        />
+                                    </View>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Branding Footer */}
+                    <View
+                        className="items-center px-6 mt-4"
+                        style={{ zIndex: 1 }}
+                    >
+                        <Text className="text-gray-400 text-xs">
+                            Generated by simplyskin
+                        </Text>
+                    </View>
+                </View>
+            </View>
         </View>
     );
 };
