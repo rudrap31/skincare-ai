@@ -28,13 +28,12 @@ const { width } = Dimensions.get('window');
 
 const MainDashboard = ({ route }) => {
     const navigation = useNavigation();
-    const { user } = useAuth();
+    const { user, recentScans, scannedProducts, refreshUserData, dataLoading: loading } = useAuth();
     const userName = user?.name;
 
     // Face Analysis State
     const [hasRecentScan, setHasRecentScan] = useState(false);
     const [loadingScans, setLoadingScans] = useState(false);
-    const [recentScans, setRecentScans] = useState([]);
     const [scanError, setScanError] = useState(false);
     const [skinMetrics, setSkinMetrics] = useState([
         { name: 'Redness', value: 0, trend: 'stable', color: '#8B5CF6' },
@@ -44,8 +43,6 @@ const MainDashboard = ({ route }) => {
     ]);
 
     // Product Scanner State
-    const { fetchScannedProducts, products, loading } =
-        useScannedProductsStore();
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showProductListModal, setShowProductListModal] = useState(false);
 
@@ -140,58 +137,58 @@ const MainDashboard = ({ route }) => {
         }
     };
 
-    const fetchRecentScans = async () => {
-        try {
-            setLoadingScans(true);
-            const { data: scans, error: scansError } = await supabase
-                .from('scanned_faces')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
-                .limit(5);
+    // const fetchRecentScans = async () => {
+    //     try {
+    //         setLoadingScans(true);
+    //         const { data: scans, error: scansError } = await supabase
+    //             .from('scanned_faces')
+    //             .select('*')
+    //             .eq('user_id', user.id)
+    //             .order('created_at', { ascending: false })
+    //             .limit(5);
 
-            if (scansError) throw scansError;
+    //         if (scansError) throw scansError;
 
-            const scansWithUrls = await Promise.all(
-                scans.map(async (scan) => {
-                    let signedUrl = null;
+    //         const scansWithUrls = await Promise.all(
+    //             scans.map(async (scan) => {
+    //                 let signedUrl = null;
 
-                    if (scan.image_path) {
-                        try {
-                            const { data: urlData, error: urlError } =
-                                await supabase.storage
-                                    .from('face-images')
-                                    .createSignedUrl(scan.image_path, 3600);
+    //                 if (scan.image_path) {
+    //                     try {
+    //                         const { data: urlData, error: urlError } =
+    //                             await supabase.storage
+    //                                 .from('face-images')
+    //                                 .createSignedUrl(scan.image_path, 3600);
 
-                            if (!urlError && urlData?.signedUrl) {
-                                signedUrl = urlData.signedUrl;
-                            }
-                        } catch (urlError) {
-                            console.error(
-                                'Exception generating signed URL:',
-                                urlError
-                            );
-                        }
-                    }
+    //                         if (!urlError && urlData?.signedUrl) {
+    //                             signedUrl = urlData.signedUrl;
+    //                         }
+    //                     } catch (urlError) {
+    //                         console.error(
+    //                             'Exception generating signed URL:',
+    //                             urlError
+    //                         );
+    //                     }
+    //                 }
 
-                    return {
-                        data: {
-                            ...scan,
-                            date: new Date(scan.created_at),
-                        },
-                        image_url: signedUrl,
-                    };
-                })
-            );
+    //                 return {
+    //                     data: {
+    //                         ...scan,
+    //                         date: new Date(scan.created_at),
+    //                     },
+    //                     image_url: signedUrl,
+    //                 };
+    //             })
+    //         );
 
-            setRecentScans(scansWithUrls);
-        } catch (error) {
-            console.error('Error fetching recent scans:', error);
-            setScanError(error.message);
-        } finally {
-            setLoadingScans(false);
-        }
-    };
+    //         setRecentScans(scansWithUrls);
+    //     } catch (error) {
+    //         console.error('Error fetching recent scans:', error);
+    //         setScanError(error.message);
+    //     } finally {
+    //         setLoadingScans(false);
+    //     }
+    // };
 
     // Event Handlers
     const handleScanPress = () => {
@@ -232,11 +229,6 @@ const MainDashboard = ({ route }) => {
     // Effects
     useFocusEffect(
         React.useCallback(() => {
-            if (user?.id) {
-                //  fetchRecentScans()
-                fetchScannedProducts(user.id);
-            }
-
             // Handle scanned product from ProductScanner screen
             if (
                 route.params?.hasOwnProperty('scannedProduct') &&
@@ -246,6 +238,8 @@ const MainDashboard = ({ route }) => {
                 setSelectedProduct(scannedProduct);
                 sheetRef.current?.expand();
                 navigation.setParams({ scannedProduct: undefined });
+
+                refreshUserData();
             }
         }, [user?.id, route.params?.scannedProduct])
     );
@@ -390,7 +384,7 @@ const MainDashboard = ({ route }) => {
             );
         }
 
-        if (products.length === 0) {
+        if (scannedProducts.length === 0) {
             return (
                 <View className="items-center justify-center py-8">
                     <Icon name="scan-outline" size={32} color="#6B7280" />
@@ -410,7 +404,7 @@ const MainDashboard = ({ route }) => {
                 showsHorizontalScrollIndicator={false}
                 className="-mx-2"
             >
-                {products.slice(0, 5).map((product, index) => (
+                {scannedProducts.slice(0, 5).map((product, index) => (
                     <TouchableOpacity
                         key={product.id}
                         onPress={() => handleOpenPress(product)}
@@ -508,7 +502,7 @@ const MainDashboard = ({ route }) => {
                                 </Text>
                             </View>
                         ) : (
-                            products.map((product, index) => (
+                            scannedProducts.map((product, index) => (
                                 <Animated.View
                                     key={product.id}
                                     className="mb-4 rounded-2xl bg-[#2f343a]"

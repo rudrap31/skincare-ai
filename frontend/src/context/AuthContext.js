@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../supabase/supabase';
+import { useScannedProductsStore } from '../store/scannedProductsStore';
 
 const AuthContext = createContext({});
 
@@ -9,11 +10,92 @@ export const AuthProvider = ({ children }) => {
     const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(null);
     const [onboardingStep, setOnboardingStep] = useState(1);
 
+    // User data states
+    const [recentScans, setRecentScans] = useState([]);
+    const [dataLoading, setDataLoading] = useState(false);
+    const [scanError, setScanError] = useState(null);
+    const [scannedProducts, setScannedProducts] = useState([]);
+    
+    const { fetchScannedProducts, products, loading: productsLoading } = useScannedProductsStore();
+
+    const fetchRecentScans = async (userId) => { 
+        try {
+            setScanError(null);
+            
+            const { data: scans, error: scansError } = await supabase
+                .from('scanned_faces')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            if (scansError) throw scansError;
+
+            const scansWithUrls = await Promise.all(
+                scans.map(async (scan) => {
+                    let signedUrl = null;
+
+                    if (scan.image_path) {
+                        try {
+                            const { data: urlData, error: urlError } =
+                                await supabase.storage
+                                    .from('face-images')
+                                    .createSignedUrl(scan.image_path, 3600);
+
+                            if (!urlError && urlData?.signedUrl) {
+                                signedUrl = urlData.signedUrl;
+                            }
+                        } catch (urlError) {
+                            console.error(
+                                'Exception generating signed URL:',
+                                urlError
+                            );
+                        }
+                    }
+
+                    return {
+                        data: {
+                            ...scan,
+                            date: new Date(scan.created_at),
+                        },
+                        image_url: signedUrl,
+                    };
+                })
+            );
+
+            setRecentScans(scansWithUrls);
+            return scansWithUrls;
+        } catch (error) {
+            console.error('Error fetching recent scans:', error);
+            setScanError(error.message);
+            setRecentScans([]); // Set empty array on error
+            return [];
+        }
+    };
+
+    const fetchUserData = async (userId) => {
+        try {
+            setDataLoading(true);
+
+
+            const [scansResult] = await Promise.all([
+                fetchRecentScans(userId),
+                fetchScannedProducts(userId), // Now properly awaited
+            ]);
+        
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        } finally {
+            setDataLoading(false);
+        }
+    };
+
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
             setUser(session?.user ?? null);
             if (session?.user) {
                 checkOnboardingStatus(session.user.id);
+                fetchUserData(session.user.id);
             }
             setLoading(false);
         });
@@ -24,12 +106,25 @@ export const AuthProvider = ({ children }) => {
             setUser(session?.user ?? null);
             if (session?.user) {
                 checkOnboardingStatus(session.user.id);
+                await fetchUserData(session.user.id);
+            } else {
+                // Clear data on logout
+                setRecentScans([]);
+                setScanError(null);
+                setScannedProducts([]);
             }
+
             setLoading(false);
         });
 
         return () => subscription.unsubscribe();
     }, []);
+
+    const refreshUserData = () => {
+        if (user?.id) {
+            fetchUserData(user.id);
+        }
+    };
 
     const checkOnboardingStatus = async (userId) => {
         try {
@@ -84,6 +179,11 @@ export const AuthProvider = ({ children }) => {
         hasCompletedOnboarding,
         onboardingStep,
         refreshOnboardingStatus,
+        recentScans,
+        scannedProducts: products,
+        dataLoading: dataLoading || productsLoading, 
+        refreshUserData,
+        scanError,
     };
 
     return (
