@@ -29,7 +29,7 @@ const CameraScanScreen = ({ navigation, route }) => {
     const device = useCameraDevice('front');
     const { hasPermission, requestPermission } = useCameraPermission();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const { user } = useAuth();
+    const { user, refreshUserData } = useAuth();
     const [isServiceError, setIsServiceError] = useState(false);
 
     const [isActive, setIsActive] = useState(true);
@@ -129,6 +129,7 @@ const CameraScanScreen = ({ navigation, route }) => {
             const analysisData = await response.json();
             console.log(analysisData)
 
+            refreshUserData()
             navigation.navigate('ScanResults', {
                 scanImage: imageUri,
                 scanResults: analysisData.result,
