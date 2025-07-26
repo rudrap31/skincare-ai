@@ -9,7 +9,6 @@ import {
     Animated,
     Dimensions,
     Modal,
-    Button,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -17,9 +16,7 @@ import GradientBackground from '../GradientBackground';
 import Navbar from '../Navbar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../supabase/supabase';
 import { getScoreColor } from '../../utils/helpers';
-import { useScannedProductsStore } from '../../store/scannedProductsStore';
 import RatingCircle from '../RatingCircle';
 import ProductSheet from './ProductSheet';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
@@ -28,13 +25,11 @@ const { width } = Dimensions.get('window');
 
 const MainDashboard = ({ route }) => {
     const navigation = useNavigation();
-    const { user, recentScans, scannedProducts, refreshUserData, dataLoading: loading } = useAuth();
+    const { user, recentScans, scannedProducts, refreshUserData, dataLoading, scanError } = useAuth();
     const userName = user?.name;
 
     // Face Analysis State
     const [hasRecentScan, setHasRecentScan] = useState(false);
-    const [loadingScans, setLoadingScans] = useState(false);
-    const [scanError, setScanError] = useState(false);
     const [skinMetrics, setSkinMetrics] = useState([
         { name: 'Redness', value: 0, trend: 'stable', color: '#8B5CF6' },
         { name: 'Hydration', value: 0, trend: 'stable', color: '#06B6D4' },
@@ -217,11 +212,6 @@ const MainDashboard = ({ route }) => {
         sheetRef.current?.expand();
     };
 
-    const handleRefreshScans = () => {
-        setScanError(false);
-        fetchRecentScans();
-    };
-
     const handleShowAllProducts = () => {
         setShowProductListModal(true);
     };
@@ -275,7 +265,7 @@ const MainDashboard = ({ route }) => {
 
     // Render Functions
     const renderRecentScansContent = () => {
-        if (loadingScans) {
+        if (dataLoading) {
             return (
                 <View className="items-center justify-center py-8">
                     <ActivityIndicator size="small" color="#8B5CF6" />
@@ -293,7 +283,7 @@ const MainDashboard = ({ route }) => {
                         Failed to load scans
                     </Text>
                     <TouchableOpacity
-                        onPress={handleRefreshScans}
+                        onPress={refreshUserData}
                         className="bg-purple-600 px-4 py-2 rounded-lg"
                     >
                         <Text className="text-white text-sm">Retry</Text>
@@ -373,7 +363,7 @@ const MainDashboard = ({ route }) => {
     };
 
     const renderRecentProducts = () => {
-        if (loading) {
+        if (dataLoading) {
             return (
                 <View className="items-center py-6">
                     <ActivityIndicator size="small" color="#8B5CF6" />
@@ -494,7 +484,7 @@ const MainDashboard = ({ route }) => {
                         }}
                         showsVerticalScrollIndicator={false}
                     >
-                        {loading ? (
+                        {dataLoading ? (
                             <View className="items-center py-10">
                                 <ActivityIndicator size="large" color="#fff" />
                                 <Text className="text-white text-lg font-semibold mt-4">

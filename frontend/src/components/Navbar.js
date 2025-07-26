@@ -7,16 +7,9 @@ import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const Navbar = () => {
-    const { user, signOut } = useAuth();
+    const { user } = useAuth();
     const navigation = useNavigation();
 
-    const handleSignOut = async () => {
-        try {
-            const { error } = await signOut();
-            if (error) throw error;
-        } catch (error) {}
-    };
-    
     return (
         <View className="mt-10 flex-row h-32 items-center right-4">
             <MaskedView

@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../supabase/supabase';
-import { useScannedProductsStore } from '../store/scannedProductsStore';
 
 const AuthContext = createContext({});
 
@@ -12,11 +11,9 @@ export const AuthProvider = ({ children }) => {
 
     // User data states
     const [recentScans, setRecentScans] = useState([]);
+    const [scannedProducts, setScannedProducts] = useState([]);
     const [dataLoading, setDataLoading] = useState(false);
     const [scanError, setScanError] = useState(null);
-    const [scannedProducts, setScannedProducts] = useState([]);
-    
-    const { fetchScannedProducts, products, loading: productsLoading } = useScannedProductsStore();
 
     const fetchRecentScans = async (userId) => { 
         try {
@@ -73,14 +70,36 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const fetchScannedProducts = async (userId) => {
+        try {
+            const { data, error } = await supabase
+                .from('scanned_products')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Failed to fetch scanned products:', error.message);
+                setScannedProducts([]);
+                return [];
+            }
+
+            setScannedProducts(data || []);
+            return data || [];
+        } catch (error) {
+            console.error('Error fetching scanned products:', error);
+            setScannedProducts([]);
+            return [];
+        }
+    };
+
     const fetchUserData = async (userId) => {
         try {
             setDataLoading(true);
 
-
-            const [scansResult] = await Promise.all([
+            const [scansResult, productsResult] = await Promise.all([
                 fetchRecentScans(userId),
-                fetchScannedProducts(userId), // Now properly awaited
+                fetchScannedProducts(userId),
             ]);
         
         } catch (error) {
@@ -180,8 +199,9 @@ export const AuthProvider = ({ children }) => {
         onboardingStep,
         refreshOnboardingStatus,
         recentScans,
-        scannedProducts: products,
-        dataLoading: dataLoading || productsLoading, 
+        scannedProducts,
+        fetchScannedProducts,
+        dataLoading,
         refreshUserData,
         scanError,
     };

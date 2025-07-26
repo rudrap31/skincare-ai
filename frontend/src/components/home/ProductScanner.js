@@ -16,7 +16,6 @@ import {
 } from 'react-native-vision-camera';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../../context/AuthContext';
-import { useScannedProductsStore } from '../../store/scannedProductsStore';
 import { IP } from '../../Constants';
 import { useNavigation } from '@react-navigation/native';
 
@@ -85,7 +84,6 @@ const ProductScanner = () => {
                     body: JSON.stringify({ upc, user_id }),
                 });
 
-                const { addProduct } = useScannedProductsStore.getState();
                 const json = await res.json();
 
                 if (json.success !== true) {
@@ -96,9 +94,6 @@ const ProductScanner = () => {
                     });
                     return;
                 }
-
-                addProduct(json.data);
-                console.log('Scan result:', json);
 
                 setScanLoading(false);
                 setCameraOn(false);
