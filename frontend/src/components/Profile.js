@@ -6,15 +6,13 @@ import {
     ActivityIndicator,
     ScrollView,
     Alert,
-    Modal,
-    TextInput,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
 import Toast from 'react-native-toast-message';
-import GradientBackground from './GradientBackground';
 import Navbar from './Navbar';
 import ContactUsModal from './ContactUs';
+import EditSkinProfileModal from './EditSkinProfileModal';
 
 const Profile = () => {
     const { user, signOut } = useAuth();
@@ -182,191 +180,6 @@ const Profile = () => {
         </View>
     );
 
-    const EditSkinProfileModal = ({ visible, onClose }) => {
-        const [newProfile, setNewProfile] = useState(profile);
-        const [saving, setSaving] = useState(false);
-
-        const skinTypes = ['Normal', 'Dry', 'Oily', 'Combination', 'Sensitive'];
-        const availableConcerns = [
-            'Acne',
-            'Redness',
-            'Dryness',
-            'Oily skin',
-            'Hyperpigmentation',
-            'Fine lines',
-            'Sensitivity',
-        ];
-
-        const handleChange = (field, value) => {
-            setNewProfile((prev) => ({ ...prev, [field]: value }));
-        };
-
-        const handleSkinTypeSelect = (type) => {
-            setNewProfile((prev) => ({ ...prev, skin_type: type }));
-        };
-
-        const handleSkinConcernToggle = (concern) => {
-            setNewProfile((prev) => {
-                const isSelected = prev.skin_concerns.includes(concern);
-                return {
-                    ...prev,
-                    skin_concerns: isSelected
-                        ? prev.skin_concerns.filter((c) => c !== concern)
-                        : [...prev.skin_concerns, concern],
-                };
-            });
-        };
-
-        const handleSubmit = async () => {
-            if (saving) return;
-
-            setSaving(true);
-
-            try {
-                const { error } = await supabase
-                    .from('profiles')
-                    .update({
-                        name: newProfile.name,
-                        skin_type: newProfile.skin_type,
-                        skin_concerns: newProfile.skin_concerns,
-                    })
-                    .eq('user_id', user.id);
-
-                if (error) {
-                    Toast.show({
-                        type: 'error',
-                        text1: 'Error updating profile.',
-                        text2: error.message,
-                    });
-                    console.error(error);
-                } else {
-                    // update local state
-                    setProfile(newProfile);
-
-                    Toast.show({
-                        type: 'success',
-                        text1: 'Profile updated successfully!',
-                    });
-
-                    onClose();
-                }
-            } catch (error) {
-                Toast.show({
-                    type: 'error',
-                    text1: 'Error updating profile.',
-                    text2: 'Please try again.',
-                });
-                console.error(error);
-            } finally {
-                setSaving(false);
-            }
-        };
-
-        const handleClose = () => {
-            if (saving) return; // Prevent closing while saving
-            onClose();
-        };
-
-        return (
-            <Modal
-                visible={visible}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={handleClose}
-            >
-                <View className="h-full bg-black/90 px-6 pt-16">
-                    <Text className="text-white text-3xl font-bold mb-10 text-center">
-                        Your Profile
-                    </Text>
-
-                    {/* Name */}
-                    <View className="mb-8">
-                        <Text className="text-white mb-2 ml-2">Name</Text>
-                        <TextInput
-                            value={newProfile.name}
-                            onChangeText={(text) => handleChange('name', text)}
-                            placeholder="Enter your name"
-                            placeholderTextColor="#aaa"
-                            className="bg-[#1a1a1a] text-white px-4 py-3 rounded-xl border border-[#333]"
-                        />
-                    </View>
-
-                    {/* Skin Type */}
-                    <View className="mb-8">
-                        <Text className="text-white mb-4 text-lg font-semibold text-center">
-                            Skin Type
-                        </Text>
-                        <View className="flex-row flex-wrap justify-center gap-3">
-                            {skinTypes.map((type) => (
-                                <TouchableOpacity
-                                    key={type}
-                                    onPress={() => handleSkinTypeSelect(type)}
-                                    className={`px-4 py-2 rounded-full ${
-                                        newProfile.skin_type === type
-                                            ? 'border bg-primary'
-                                            : 'border border-gray-600'
-                                    }`}
-                                >
-                                    <Text className="text-white">{type}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* Skin Concerns */}
-                    <View className="mb-8">
-                        <Text className="text-white mb-4 text-lg font-semibold text-center">
-                            Skin Concerns
-                        </Text>
-                        <View className="flex-row flex-wrap justify-center gap-3">
-                            {availableConcerns.map((concern) => (
-                                <TouchableOpacity
-                                    key={concern}
-                                    onPress={() =>
-                                        handleSkinConcernToggle(concern)
-                                    }
-                                    className={`px-4 py-2 rounded-full ${
-                                        newProfile.skin_concerns.includes(
-                                            concern
-                                        )
-                                            ? 'border bg-primary'
-                                            : 'border border-gray-600'
-                                    }`}
-                                >
-                                    <Text className="text-white">
-                                        {concern}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    {/* Save Button */}
-                    <TouchableOpacity
-                        onPress={handleSubmit}
-                        disabled={saving}
-                        className={`py-4 rounded-full mx-10 mt-6 mb-8 ${
-                            saving ? 'bg-purple-600/50' : 'bg-purple-600'
-                        }`}
-                    >
-                        {saving ? (
-                            <View className="flex-row items-center justify-center">
-                                <ActivityIndicator size="small" color="white" />
-                                <Text className="text-white text-center text-lg font-bold ml-2">
-                                    Saving...
-                                </Text>
-                            </View>
-                        ) : (
-                            <Text className="text-white text-center text-lg font-bold">
-                                Save Changes
-                            </Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            </Modal>
-        );
-    };
-
     const MenuButton = ({
         icon,
         title,
@@ -464,7 +277,11 @@ const Profile = () => {
             </View>
             <EditSkinProfileModal
                 visible={showEditModal}
-                onClose={() => setShowEditModal(false)}
+                onClose={() => {setShowEditModal(false)
+                    fetchProfile()
+                }}
+                profile={profile}
+                
             />
             <ContactUsModal
                 visible={showContactModal}
