@@ -31,6 +31,7 @@ const StepName = ({ name, onNext }) => {
                         placeholderTextColor="#666"
                         value={value}
                         onChangeText={setValue}
+                        maxLength={25}
                         autoCapitalize="words"
                         className="bg-[#1a1a1a] text-white px-4 py-3 rounded-xl border border-[#333]"
                     />
