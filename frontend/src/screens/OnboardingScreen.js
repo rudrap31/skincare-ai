@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
 import StepName from '../components/onboarding/StepName';
@@ -57,7 +57,21 @@ const OnboardingScreen = () => {
         await refreshOnboardingStatus();
     };
 
-    if (loading) return null;
+    if (loading) {
+        return (
+            <View className="flex-1 justify-center items-center bg-black">
+                <View className="items-center">
+                    <ActivityIndicator size="large" color="#8B5CF6" />
+                    <Text className="text-white text-lg font-semibold mt-4">
+                        Loading your profile...
+                    </Text>
+                    <Text className="text-gray-300 text-base mt-2 text-center px-8">
+                        We're setting up your personalized skin care journey
+                    </Text>
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={{ flex: 1, justifyContent: 'center' }}>
