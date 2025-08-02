@@ -7,7 +7,7 @@ import {
     Animated,
     Dimensions,
     SafeAreaView,
-    ActivityIndicator,
+    ActivityIndicator, Alert, Linking
 } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import {
@@ -111,59 +111,45 @@ const ProductScanner = () => {
 
     if (!hasPermission) {
         return (
-            <Animated.View
-                style={[
-                    StyleSheet.absoluteFill,
-                    {
-                        zIndex: 1000,
-                        backgroundColor: 'rgba(0,0,0,0.9)',
-                        opacity: fadeAnim,
-                    },
-                ]}
-            >
-                <SafeAreaView className="flex-1 justify-center items-center px-6">
-                    <Animated.View
-                        className="bg-white rounded-2xl p-8 items-center shadow-2xl"
-                        style={{
-                            transform: [{ translateY: slideAnim }],
-                        }}
-                    >
-                        <Ionicons
-                            name="camera-outline"
-                            size={64}
-                            color="#9333ea"
-                        />
-                        <Text className="text-gray-800 text-xl font-bold mt-4 text-center">
-                            Camera Permission Required
-                        </Text>
-                        <Text className="text-gray-600 text-center mt-2 mb-6">
-                            We need access to your camera to scan product
-                            barcodes
-                        </Text>
-
-                        <View className="flex-row space-x-3">
-                            <TouchableOpacity
-                                onPress={handleClose}
-                                className="bg-gray-200 px-6 py-3 rounded-xl flex-1"
-                            >
-                                <Text className="text-gray-800 font-semibold text-center">
-                                    Cancel
-                                </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={requestPermission}
-                                className="bg-purple-600 px-6 py-3 rounded-xl flex-1"
-                            >
-                                <Text className="text-white font-semibold text-center">
-                                    Grant Permission
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </Animated.View>
-                </SafeAreaView>
-            </Animated.View>
+          <View className="flex-1 items-center justify-center bg-black px-6">
+            <Text className="text-white text-lg text-center mb-6">
+              Camera permission is required to use this feature
+            </Text>
+      
+            <View className="flex-row gap-1">
+              <TouchableOpacity
+                onPress={handleClose}
+                className="bg-gray-200 px-6 py-3 rounded-xl"
+              >
+                <Text className="text-gray-800 font-semibold text-center">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+      
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    'Camera Permission Required',
+                    'We need access to your camera to scan the barcode. Please open Settings to enable it.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Open Settings',
+                        onPress: () => Linking.openSettings(),
+                      },
+                    ]
+                  );
+                }}
+                className="bg-primary px-6 py-3 rounded-xl"
+              >
+                <Text className="text-white font-semibold text-center">
+                  Grant Permission
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         );
-    }
+      }
 
     if (device == null) {
         return (

@@ -8,6 +8,7 @@ import {
     Dimensions,
     SafeAreaView,
     ActivityIndicator,
+    Linking,
 } from 'react-native';
 import {
     Camera,
@@ -27,7 +28,7 @@ const { width, height } = Dimensions.get('window');
 const CameraScanScreen = ({ navigation, route }) => {
     const camera = useRef(null);
     const device = useCameraDevice('front');
-    const { hasPermission, requestPermission } = useCameraPermission();
+    const { hasPermission, requestPermission, status } = useCameraPermission();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const { user, refreshUserData } = useAuth();
     const [isServiceError, setIsServiceError] = useState(false);
@@ -36,21 +37,14 @@ const CameraScanScreen = ({ navigation, route }) => {
     const actionSheetRef = useRef(null);
 
     useEffect(() => {
-        const requestCameraPermission = async () => {
+        const checkPermission = async () => {
             if (!hasPermission) {
-                const permission = await requestPermission();
-                if (!permission) {
-                    Alert.alert(
-                        'Camera Permission Required',
-                        'Please grant camera permission to use this feature.',
-                        [{ text: 'OK', onPress: () => navigation.goBack() }]
-                    );
+                const result = await requestPermission();
                 }
             }
-        };
 
-        requestCameraPermission();
-    }, [hasPermission]);
+        checkPermission();
+    }, []);
 
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
@@ -112,24 +106,20 @@ const CameraScanScreen = ({ navigation, route }) => {
             });
 
             if (!response.ok) {
-                if (
-                response.status === 400
-            ) {
-                setIsServiceError(false);
-                actionSheetRef.current?.show();
-            } else if (
-                response.status === 503 
-            ) {
-                setIsServiceError(true);
-                actionSheetRef.current?.show();
+                if (response.status === 400) {
+                    setIsServiceError(false);
+                    actionSheetRef.current?.show();
+                } else if (response.status === 503) {
+                    setIsServiceError(true);
+                    actionSheetRef.current?.show();
+                }
+                setIsAnalyzing(false);
+                return;
             }
-            setIsAnalyzing(false);
-            return;
-        }
             const analysisData = await response.json();
-            console.log(analysisData)
+            console.log(analysisData);
 
-            refreshUserData()
+            refreshUserData();
             navigation.navigate('ScanResults', {
                 scanImage: imageUri,
                 scanResults: analysisData.result,
@@ -194,21 +184,46 @@ const CameraScanScreen = ({ navigation, route }) => {
 
     if (!hasPermission) {
         return (
-            <View className="flex-1 items-center justify-center bg-black">
-                <Text className="text-white text-lg text-center px-8">
-                    Camera permission is required to use this feature
+          <View className="flex-1 items-center justify-center bg-black px-6">
+            <Text className="text-white text-lg text-center mb-6">
+              Camera permission is required to use this feature
+            </Text>
+      
+            <View className="flex-row gap-1">
+              <TouchableOpacity
+                onPress={handleClose}
+                className="bg-gray-200 px-6 py-3 rounded-xl"
+              >
+                <Text className="text-gray-800 font-semibold text-center">
+                  Cancel
                 </Text>
-                <TouchableOpacity
-                    onPress={requestPermission}
-                    className="bg-blue-500 px-6 py-3 rounded-lg mt-4"
-                >
-                    <Text className="text-white font-semibold">
-                        Grant Permission
-                    </Text>
-                </TouchableOpacity>
+              </TouchableOpacity>
+      
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    'Camera Permission Required',
+                    'We need access to your camera to scan your skin. Please open Settings to enable it.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Open Settings',
+                        onPress: () => Linking.openSettings(),
+                      },
+                    ]
+                  );
+                }}
+                className="bg-primary px-6 py-3 rounded-xl"
+              >
+                <Text className="text-white font-semibold text-center">
+                  Grant Permission
+                </Text>
+              </TouchableOpacity>
             </View>
+          </View>
         );
-    }
+      }
+      
 
     if (!device) {
         return (
@@ -366,7 +381,7 @@ const CameraScanScreen = ({ navigation, route }) => {
                                     Use good lighting (avoid shadows)
                                 </Text>
                             </View>
-                            
+
                             <View className="flex-row items-start">
                                 <Text className="text-purple-400 mr-3 text-base">
                                     •
