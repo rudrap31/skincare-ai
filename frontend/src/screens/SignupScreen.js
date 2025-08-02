@@ -88,7 +88,7 @@ const SignupScreen = () => {
                 visibilityTime: 4000,
             });
 
-            navigation.navigate('Home');
+            navigation.navigate('AuthWelcome');
         } catch (err) {
             Toast.show({
                 type: 'error',
@@ -138,7 +138,7 @@ const SignupScreen = () => {
                         {/* Form */}
                         <View className="space-y-4 mb-8">
                             <View>
-                                <Text className="text-white/80 text-sm mb-2 ml-1">
+                                <Text className="text-white/80 text-sm mb-4 ml-1">
                                     Email
                                 </Text>
                                 <TextInput

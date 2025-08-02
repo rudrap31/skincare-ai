@@ -6,6 +6,7 @@ import {
     ActivityIndicator,
     ScrollView,
     Alert,
+    Linking
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
@@ -258,6 +259,12 @@ const Profile = () => {
                     onPress={() => {
                         setShowContactModal(true);
                     }}
+                />
+                <MenuButton
+                    icon="❤️"
+                    title="Support us!"
+                    subtitle="Tap to show appreciation"
+                    onPress={() => Linking.openURL('https://buymeacoffee.com/simplyskin')}
                 />
                 <MenuButton
                     icon="🚪"
