@@ -16,7 +16,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "We need access to your camera to scan your skin.",
-        "NSPhotoLibraryUsageDescription": "We need access to your photos to upload images.",    
+        "NSPhotoLibraryUsageDescription": "We need access to your photos to upload images.",
+        "NSPhotoLibraryAddUsageDescription": "This app needs access to save photos to your library.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.anonymous.skincareai"
@@ -43,18 +44,36 @@
       }
     },
     "plugins": [
-        [
-            "expo-image-picker",
-            {
-              "photosPermission": "The app accesses your photos to let you share them with your friends."
-            }
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you scan you face."
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "The app accesses your camera to let you scan you face and product barcodes."
+        }
+      ],
+      [
+        "react-native-share",
+        {
+          "ios": [
+            "fb",
+            "instagram",
+            "twitter",
+            "tiktoksharesdk"
           ],
-          [
-            "react-native-vision-camera",
-            {
-              "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera."
-            }
+          "android": [
+            "com.facebook.katana",
+            "com.instagram.android",
+            "com.twitter.android",
+            "com.zhiliaoapp.musically"
           ]
+        }
+      ],
+      "expo-build-properties"
     ]
   }
 }

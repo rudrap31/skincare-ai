@@ -117,7 +117,6 @@ const CameraScanScreen = ({ navigation, route }) => {
                 return;
             }
             const analysisData = await response.json();
-            console.log(analysisData);
 
             refreshUserData();
             navigation.navigate('ScanResults', {

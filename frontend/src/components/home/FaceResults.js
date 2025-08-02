@@ -1,4 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import * as React from "react";
+
 import {
     View,
     Text,
@@ -12,8 +14,8 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import GradientBackground from '../GradientBackground';
 import { getScoreColor } from '../../utils/helpers';
 import { captureRef } from 'react-native-view-shot';
-import { Share } from 'react-native';
-
+import Share from 'react-native-share';
+import LotusIcon from '../../utils/LotusIcon';
 const { width, height } = Dimensions.get('window');
 
 const ScanResultsScreen = ({ navigation, route, scanImage, scanResults }) => {
@@ -49,11 +51,7 @@ const ScanResultsScreen = ({ navigation, route, scanImage, scanResults }) => {
 
     const shareResult = async () => {
         try {
-            // Show branding before capturing (off-screen)
             setIsCapturing(true);
-
-            // Small delay to ensure the branding renders
-            await new Promise((resolve) => setTimeout(resolve, 100));
 
             const uri = await captureRef(shareViewRef, {
                 format: 'png',
@@ -61,15 +59,19 @@ const ScanResultsScreen = ({ navigation, route, scanImage, scanResults }) => {
                 result: 'tmpfile',
             });
 
-            // Hide branding after capturing
             setIsCapturing(false);
 
-            await Share.share({
-                url: uri,
-                title: 'My Skin Scan Results',
-            });
+            const options = {
+                url: 'file://' + uri, 
+                type: 'image/png',
+                failOnCancel: false,
+                showAppsToView: true,
+                excludedActivityTypes: [],
+                message: "Hey! Check out my face scan results I got using SimplySkin."
+            };
+
+            await Share.open(options)
         } catch (error) {
-            console.error('Error sharing result:', error);
             setIsCapturing(false);
         }
     };
@@ -290,11 +292,13 @@ const ScanResultsScreen = ({ navigation, route, scanImage, scanResults }) => {
                         className="items-center mb-6 px-6"
                         style={{ zIndex: 1 }}
                     >
-                        <View className="flex-row items-center">
-                            <Icon name="medical" size={28} color="#8B5CF6" />
-                            <Text className="text-white text-2xl font-bold ml-2">
-                                simplyskin
-                            </Text>
+                        <View className="flex-1 items-center">
+                            <View className="flex-row items-center">
+                                <LotusIcon/>
+                                <Text className="text-white text-2xl font-bold ml-2">
+                                    simplyskin
+                                </Text>
+                            </View>
                             <Text className="text-gray-300 text-sm mt-1">
                                 Your Skin Analysis Results
                             </Text>
