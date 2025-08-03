@@ -14,6 +14,7 @@ import Toast from 'react-native-toast-message';
 import Navbar from './Navbar';
 import ContactUsModal from './ContactUs';
 import EditSkinProfileModal from './EditSkinProfileModal';
+import TermsModal from './TermsModal';
 
 const Profile = () => {
     const { user, signOut } = useAuth();
@@ -31,6 +32,8 @@ const Profile = () => {
     });
     const [showEditModal, setShowEditModal] = useState(false);
     const [showContactModal, setShowContactModal] = useState(false);
+    const [showTermsModal, setShowTermsModal] = useState(false);
+
 
     useEffect(() => {
         if (user) {
@@ -233,15 +236,11 @@ const Profile = () => {
 
             <View className="mb-8">
                 <MenuButton
-                    icon="⚙️"
-                    title="Account Settings"
-                    subtitle="Privacy, notifications, data"
+                    icon="📃"
+                    title="Terms & Privacy"
+                    subtitle="Read our policies"
                     onPress={() => {
-                        Toast.show({
-                            type: 'info',
-                            text1: 'Settings',
-                            text2: 'Feature coming soon!',
-                        });
+                        setShowTermsModal(true);
                     }}
                 />
                 <MenuButton
@@ -293,6 +292,10 @@ const Profile = () => {
             <ContactUsModal
                 visible={showContactModal}
                 onClose={() => setShowContactModal(false)}
+            />
+            <TermsModal 
+                visible={showTermsModal}
+                onClose={() => setShowTermsModal(false)}
             />
         </ScrollView>
     );
