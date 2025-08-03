@@ -90,7 +90,7 @@ const LoginScreen = () => {
 
                     {/* Form */}
                     <View className="space-y-4 mb-8">
-                        <View>
+                        <View className="mb-4">
                             <Text className="text-white/80 text-sm mb-2 ml-1">
                                 Email
                             </Text>

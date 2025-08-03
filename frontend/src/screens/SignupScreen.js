@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { View, TextInput, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+    View,
+    TextInput,
+    Text,
+    TouchableOpacity,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    Linking
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -106,18 +115,25 @@ const SignupScreen = () => {
         <View className="flex-1 bg-black">
             {/* Gradient Background */}
 
-            <KeyboardAvoidingView 
-                className="flex-1" 
+            <KeyboardAvoidingView
+                className="flex-1"
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
-                <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+                <ScrollView
+                    className="flex-1"
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Header */}
                     <View className="pt-14 px-6 flex-row items-center">
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
                         >
-                            <Ionicons name="arrow-back" size={20} color="white" />
+                            <Ionicons
+                                name="arrow-back"
+                                size={20}
+                                color="white"
+                            />
                         </TouchableOpacity>
                         <Text className="text-white text-lg font-medium ml-4">
                             Create Account
@@ -131,13 +147,14 @@ const SignupScreen = () => {
                                 Join SimplySkin
                             </Text>
                             <Text className="text-white/70 text-base">
-                                Create your account to start your personalized skincare journey
+                                Create your account to start your personalized
+                                skincare journey
                             </Text>
                         </View>
 
                         {/* Form */}
                         <View className="space-y-4 mb-8">
-                            <View>
+                            <View className="mb-2">
                                 <Text className="text-white/80 text-sm mb-4 ml-1">
                                     Email
                                 </Text>
@@ -153,7 +170,7 @@ const SignupScreen = () => {
                                 />
                             </View>
 
-                            <View>
+                            <View className="mb-2">
                                 <Text className="text-white/80 text-sm mb-2 ml-1">
                                     Password
                                 </Text>
@@ -208,13 +225,35 @@ const SignupScreen = () => {
 
                         {/* Terms */}
                         <Text className="text-white/50 text-xs text-center mb-6 px-4">
-                            By creating an account, you agree to our Terms of Service and Privacy Policy
+                            By creating an account, you agree to our{' '}
+                            <Text
+                                className="underline text-white/70"
+                                onPress={() =>
+                                    Linking.openURL(
+                                        'https://simplyskin.vercel.app/terms'
+                                    )
+                                }
+                            >
+                                Terms of Service
+                            </Text>{' '}
+                            and{' '}
+                            <Text
+                                className="underline text-white/70"
+                                onPress={() =>
+                                    Linking.openURL(
+                                        'https://simplyskin.vercel.app/privacy'
+                                    )
+                                }
+                            >
+                                Privacy Policy
+                            </Text>
+                            .
                         </Text>
 
                         {/* Sign In Link */}
                         <View className="flex-row justify-center items-center">
                             <Text className="text-white/70 text-base">
-                                Already have an account? 
+                                Already have an account?
                             </Text>
                             <TouchableOpacity
                                 onPress={() => {
@@ -230,7 +269,7 @@ const SignupScreen = () => {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
-            <Toast/>
+            <Toast />
         </View>
     );
 };
