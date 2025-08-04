@@ -8,111 +8,126 @@ const router = express.Router();
 async function getValidImage(images) {
     // Check if url is a valid image
     async function isValidImageUrl(url) {
-      try {
-        const res = await fetch(url, { method: "HEAD" });
-        const type = res.headers.get("Content-Type");
-        return res.ok && type && type.startsWith("image/");
-      } catch {
-        return false;
-      }
+        try {
+            const res = await fetch(url, { method: 'HEAD', timeout: 5000 });
+            const type = res.headers.get('Content-Type');
+            return res.ok && type && type.startsWith('image/');
+        } catch {
+            return false;
+        }
     }
-  
+
     // https versions
     for (const originalUrl of images) {
-      let url = originalUrl;
-      if (url.startsWith("http://")) {
-        url = url.replace("http://", "https://");
-      }
-      if (await isValidImageUrl(url)) {
-        return url;
-      }
+        let url = originalUrl;
+        if (url.startsWith('http://')) {
+            url = url.replace('http://', 'https://');
+        }
+        if (await isValidImageUrl(url)) {
+            return url;
+        }
     }
-  
+
     for (const url of images) {
-      if (await isValidImageUrl(url)) {
-        return url;
-      }
+        if (await isValidImageUrl(url)) {
+            return url;
+        }
     }
-  
+
     return null;
-  }
-  
+}
 
 router.post('/', async (req, res) => {
-    const supabase = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const { upc, user_id } = req.body;
-
-    if (!upc || !user_id) {
-        return res.status(400).json({ error: 'Missing UPC or user_id' });
-    }
-
-    // Fetch skin_type
-    const { data: skinTypeData, error: skinTypeError } = await supabase
-        .from('profiles')
-        .select('skin_type')
-        .eq('user_id', user_id)
-        .single();
-
-    // Fetch skin_concerns
-    const { data: skinConcernsData, error: skinConcernsError } = await supabase
-        .from('profiles')
-        .select('skin_concerns')
-        .eq('user_id', user_id)
-        .single();
-
-    if (
-        skinTypeError ||
-        skinConcernsError ||
-        !skinTypeData ||
-        !skinConcernsData
-    ) {
-        return res.status(400).json({ error: 'Missing skin profile data' });
-    }
-
-    const skin_type = skinTypeData.skin_type;
-    const skin_concerns = skinConcernsData.skin_concerns;
-
     try {
-        // Fetch product info from UPCItemDB
-        const upcRes = await axios.get(
-            `https://api.upcitemdb.com/prod/trial/lookup?upc=${upc}`
-        );
-        const item = upcRes.data.items?.[0];
-        if (!item) return res.status(404).json({ error: 'Product not found' });
+        // Initialize clients with error handling
+        let supabase, openai;
+        try {
+            supabase = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+            openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        } catch (err) {
+            //console.error('Client initialization error:', err);
+            return res.status(500).json({ error: 'Service configuration error' });
+        }
+
+        const { upc, user_id } = req.body;
+
+        if (!upc || !user_id) {
+            return res.status(400).json({ error: 'Missing UPC or user_id' });
+        }
+
+        // Fetch skin_type
+        const { data: skinTypeData, error: skinTypeError } = await supabase
+            .from('profiles')
+            .select('skin_type')
+            .eq('user_id', user_id)
+            .single();
+
+        // Fetch skin_concerns
+        const { data: skinConcernsData, error: skinConcernsError } = await supabase
+            .from('profiles')
+            .select('skin_concerns')
+            .eq('user_id', user_id)
+            .single();
+
+        if (
+            skinTypeError ||
+            skinConcernsError ||
+            !skinTypeData ||
+            !skinConcernsData
+        ) {
+            return res.status(400).json({ error: 'Missing skin profile data' });
+        }
+
+        const skin_type = skinTypeData.skin_type;
+        const skin_concerns = skinConcernsData.skin_concerns;
+
+        // Fetch product info from UPCItemDB with error handling
+        let upcRes, item;
+        try {
+            upcRes = await axios.get(
+                `https://api.upcitemdb.com/prod/trial/lookup?upc=${upc}`,
+                { timeout: 10000 }
+            );
+            item = upcRes.data.items?.[0];
+            if (!item) return res.status(404).json({ error: 'Product not found' });
+        } catch (err) {
+            //console.error('UPC API error:', err);
+            return res.status(500).json({ error: 'Failed to fetch product information' });
+        }
 
         const product_name = item.title;
-        const image_url = (await getValidImage(item.images)) || null
+        let image_url;
+        try {
+            image_url = (await getValidImage(item.images)) || null;
+        } catch (err) {
+            //console.error('Image validation error:', err);
+            image_url = null; // Continue without image
+        }
         const brand = item.brand || 'Unknown';
 
         // Check if it is a skincare product
         const checkPrompt = `Given the product name "${product_name}", is this a skincare product? Respond ONLY with JSON: { "is_skincare": true } or { "is_skincare": false }.`;
 
-        const checkRes = await openai.chat.completions.create({
-            model: 'gpt-4.1',
-            messages: [{ role: 'user', content: checkPrompt }],
-        });
-
-        let isSkincare;
+        let checkRes, isSkincare;
         try {
+            checkRes = await openai.chat.completions.create({
+                model: 'gpt-4.1',
+                messages: [{ role: 'user', content: checkPrompt }],
+            });
+
             isSkincare = JSON.parse(checkRes.choices[0].message.content.trim());
-        } catch (e) {
-            return res
-                .status(500)
-                .json({
-                    error: 'Failed to parse OpenAI skincare check response',
-                });
+        } catch (err) {
+            //console.error('OpenAI skincare check error:', err);
+            return res.status(500).json({ error: 'Failed to analyze product type' });
         }
 
         if (!isSkincare.is_skincare) {
-            return res
-                .status(400)
-                .json({
-                    error: 'This does not appear to be a skincare product',
-                });
+            return res.status(400).json({
+                error: 'This does not appear to be a skincare product',
+            });
         }
 
         // Ask OpenAI for rating
@@ -130,27 +145,24 @@ router.post('/', async (req, res) => {
     
     Return your response in JSON format like:
     {
-      "rating": 7.5,
-      "summary": "The [product name] is a great mostrizer to use especially paired with sunscreen. It is also sutiable for all skin types"
+      "rating": 75,
+      "summary": "The [product name] is a great moisturizer to use especially paired with sunscreen. It is also suitable for all skin types",
       "pros": ["Hydrating", "No fragrance"],
       "cons": ["Contains alcohol"]
     }`;
 
-        const openaiRes = await openai.chat.completions.create({
-            model: 'gpt-4.1',
-            messages: [{ role: 'user', content: prompt }],
-        });
-
-        const resultText = openaiRes.choices[0].message.content.trim();
-
-        let parsed;
+        let openaiRes, parsed;
         try {
-            parsed = JSON.parse(resultText);
-        } catch (e) {
-            return res.status(500).json({
-                error: 'Failed to parse OpenAI response',
-                raw: resultText,
+            openaiRes = await openai.chat.completions.create({
+                model: 'gpt-4.1',
+                messages: [{ role: 'user', content: prompt }],
             });
+
+            const resultText = openaiRes.choices[0].message.content.trim();
+            parsed = JSON.parse(resultText);
+        } catch (err) {
+            //console.error('OpenAI rating error:', err);
+            return res.status(500).json({ error: 'Failed to analyze product' });
         }
 
         // Save to Supabase
@@ -169,16 +181,19 @@ router.post('/', async (req, res) => {
             .select()
             .single();
 
-        console.log(insertedProduct, insertError)
-        if (insertError) throw insertError;
+        if (insertError) {
+            //console.error('Database insert error:', insertError);
+            return res.status(500).json({ error: 'Failed to save product data' });
+        }
 
         res.status(200).json({
             success: true,
             data: insertedProduct,
         });
+
     } catch (err) {
-        console.error('Rate product error:', err);
-        res.status(500).json({ error: 'Something went wrong' });
+        //console.error('Unexpected error in rate product route:', err);
+        return res.status(500).json({ error: 'Something went wrong' });
     }
 });
 
