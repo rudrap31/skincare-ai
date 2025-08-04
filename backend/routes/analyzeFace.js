@@ -5,19 +5,40 @@ import { OpenAI } from 'openai';
 const router = express.Router();
 
 router.post('/', async (req, res) => {
-    const supabase = createClient(
-        process.env.SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    const { img, user_id } = req.body;
-
-    if (!img || !user_id) {
-        return res.status(400).json({ error: 'Missing image or user_id' });
-    }
-
     try {
+        // Validate environment variables
+        if (
+            !process.env.SUPABASE_URL ||
+            !process.env.SUPABASE_SERVICE_ROLE_KEY ||
+            !process.env.OPENAI_API_KEY
+        ) {
+            //console.error('Missing required environment variables');
+            return res
+                .status(500)
+                .json({ error: 'Server configuration error' });
+        }
+
+        // Initialize clients with error handling
+        let supabase, openai;
+        try {
+            supabase = createClient(
+                process.env.SUPABASE_URL,
+                process.env.SUPABASE_SERVICE_ROLE_KEY
+            );
+            openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        } catch (clientError) {
+            //console.error('Failed to initialize clients:', clientError);
+            return res
+                .status(500)
+                .json({ error: 'Service initialization failed' });
+        }
+
+        const { img, user_id } = req.body;
+
+        if (!img || !user_id) {
+            return res.status(400).json({ error: 'Missing image or user_id' });
+        }
+
         // Fetch skin_type and skin_concerns
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
@@ -26,60 +47,76 @@ router.post('/', async (req, res) => {
             .single();
 
         if (profileError || !profile) {
-            return res.status(400).json({ error: 'Missing skin profile data' });
+            //console.error('Profile fetch error:', profileError);
+            return res
+                .status(500)
+                .json({ error: 'Failed to fetch user profile' });
         }
 
         const { skin_type, skin_concerns } = profile;
 
-        // Use the actual image path from the request instead of hardcoded path
+        // Validate skin_concerns is an array
+        const concernsArray = Array.isArray(skin_concerns) ? skin_concerns : [];
+
+        // Create signed URL
         const { data: signedUrlData, error: signedUrlError } =
             await supabase.storage
                 .from('face-images')
-                .createSignedUrl(img, 60 * 60); // 1 hour expiry
+                .createSignedUrl(img, 60 * 60);
 
-        if (signedUrlError) {
-            console.error('Signed URL error:', signedUrlError);
-            return res
-                .status(500)
-                .json({ error: 'Failed to create signed URL' });
+        if (signedUrlError || !signedUrlData?.signedUrl) {
+            //console.error('Signed URL error:', signedUrlError);
+            return res.status(500).json({ error: 'Failed to process image' });
         }
 
         const signedUrl = signedUrlData.signedUrl;
 
+        // Face validation check
         const checkPrompt = `Given an image, is this a picture of a full face? If it is bad lighting respond false
                          Respond ONLY with JSON: { "is_face": true } or { "is_face": false }.`;
 
-        const checkCompletion = await openai.chat.completions.create({
-            model: 'gpt-4.1',
-            messages: [
-                {
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: checkPrompt },
-                        {
-                            type: 'image_url',
-                            image_url: {
-                                url: signedUrl,
+        let checkCompletion;
+        try {
+            checkCompletion = await openai.chat.completions.create({
+                model: 'gpt-4.1',
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: checkPrompt },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: signedUrl,
+                                },
                             },
-                        },
-                    ],
-                },
-            ],
-        });
-        console.log(checkCompletion.choices[0].message.content)
+                        ],
+                    },
+                ],
+            });
+        } catch (openaiError) {
+            //console.error('OpenAI face check error:', openaiError);
+            return res.status(500).json({ error: 'Face validation failed' });
+        }
+
+        //console.log(checkCompletion.choices[0].message.content);
 
         let isFace;
         try {
-            isFace = JSON.parse(
-                checkCompletion.choices[0].message.content.trim()
-            );
-        } catch (e) {
-            return res.status(500).json({
-                error: 'Failed to parse OpenAI skincare check response',
-            });
+            const content =
+                checkCompletion.choices[0]?.message?.content?.trim();
+            if (!content) {
+                throw new Error('Empty response from AI');
+            }
+            isFace = JSON.parse(content);
+        } catch (parseError) {
+            //console.error('Failed to parse face check response:', parseError);
+            return res
+                .status(500)
+                .json({ error: 'Face validation processing failed' });
         }
 
-        if (!isFace.is_face) {
+        if (!isFace?.is_face) {
             return res.status(400).json({
                 success: false,
                 error: {
@@ -89,10 +126,11 @@ router.post('/', async (req, res) => {
             });
         }
 
+        // Main analysis
         const prompt = `Analyze this face for skin quality. Avoid sugarcoating, give clear, accurate feedback and provide truthful, unbiased analysis. 
-                        Skin type: ${skin_type}. Concerns: ${skin_concerns.join(
-            ', '
-        )}. 
+                        Skin type: ${skin_type || 'Unknown'}. Concerns: ${
+            concernsArray.join(', ') || 'None specified'
+        }. 
                         Rate redness, acne, hydration and give an overall score from 1-100. For all metrics 1 is the worst and 100 is the best. Provide a detailed analysis and any tips if any.
                         Return your response in JSON format like:
                         {
@@ -109,8 +147,9 @@ router.post('/', async (req, res) => {
                             
                         }`;
 
+        let completion;
         try {
-            const completion = await openai.chat.completions.create({
+            completion = await openai.chat.completions.create({
                 model: 'gpt-4.1',
                 messages: [
                     {
@@ -127,74 +166,80 @@ router.post('/', async (req, res) => {
                     },
                 ],
             });
-
-            const result = completion.choices[0].message.content;
-
-            // Parse the JSON response from OpenAI
-            let parsedResult;
-            try {
-                // Remove markdown code blocks and extract JSON
-                let cleanedResult = result;
-
-                // Remove ```json and ``` if present
-                cleanedResult = cleanedResult.replace(/```json\s*/g, '');
-                cleanedResult = cleanedResult.replace(/```\s*$/g, '');
-                cleanedResult = cleanedResult.trim();
-
-                const jsonMatch = cleanedResult.match(/\{[\s\S]*\}/);
-                const jsonString = jsonMatch ? jsonMatch[0] : cleanedResult;
-
-                parsedResult = JSON.parse(jsonString);
-            } catch (parseError) {
-                console.error(
-                    'Failed to parse OpenAI response as JSON:',
-                    parseError
-                );
-                console.error('Raw response:', result);
-                return res.status(500).json({
-                    error: 'Invalid response format from AI service',
-                    rawResponse: result,
-                });
-            }
-
-            const { data: insertedFace, error: insertError } = await supabase
-                .from('scanned_faces')
-                .insert({
-                    user_id: user_id,
-                    analysis: parsedResult.analysis,
-                    tips: parsedResult.tips,
-                    acne: parsedResult.acne,
-                    hydration: parsedResult.hydration,
-                    redness: parsedResult.redness,
-                    overall: parsedResult.overall,
-                    image_path: img,
-                })
-                .select()
-                .single();
-
-            if (insertError) {
-                console.error('Supabase insert error:', insertError);
-                return res
-                    .status(500)
-                    .json({ error: 'Failed to save analysis data' });
-            }
-
-            res.status(200).json({ 
-                success: true,
-                result: parsedResult 
-            });
         } catch (openaiError) {
-            console.error('OpenAI API error:', openaiError);
-            return res.status(503).json({
-                error: 'AI_SERVICE_UNAVAILABLE',
-                message: 'Face analysis service temporarily unavailable',
-            });
+            //console.error('OpenAI analysis error:', openaiError);
+            return res.status(500).json({ error: 'Skin analysis failed' });
         }
-    } catch (err) {
-        console.error('Analyze Face error:', err);
-        res.status(500).json({
-            error: 'Something went wrong analyzing the image',
+
+        const result = completion.choices[0]?.message?.content;
+        if (!result) {
+            //console.error('Empty response from OpenAI analysis');
+            return res
+                .status(500)
+                .json({ error: 'Analysis processing failed' });
+        }
+
+        // Parse the JSON response from OpenAI
+        let parsedResult;
+        try {
+            // Remove markdown code blocks and extract JSON
+            let cleanedResult = result
+                .replace(/```json\s*/g, '')
+                .replace(/```\s*$/g, '')
+                .trim();
+            const jsonMatch = cleanedResult.match(/\{[\s\S]*\}/);
+            const jsonString = jsonMatch ? jsonMatch[0] : cleanedResult;
+            parsedResult = JSON.parse(jsonString);
+
+            // Validate required fields
+            if (
+                typeof parsedResult.redness !== 'number' ||
+                typeof parsedResult.acne !== 'number' ||
+                typeof parsedResult.hydration !== 'number' ||
+                typeof parsedResult.overall !== 'number' ||
+                typeof parsedResult.analysis !== 'string' ||
+                !Array.isArray(parsedResult.tips)
+            ) {
+                throw new Error('Invalid response structure');
+            }
+        } catch (parseError) {
+            //console.error('Failed to parse OpenAI analysis response:', parseError);
+            //console.error('Raw response:', result);
+            return res
+                .status(500)
+                .json({ error: 'Analysis result processing failed' });
+        }
+
+        // Save to database
+        const { data: insertedFace, error: insertError } = await supabase
+            .from('scanned_faces')
+            .insert({
+                user_id: user_id,
+                analysis: parsedResult.analysis,
+                tips: parsedResult.tips,
+                acne: parsedResult.acne,
+                hydration: parsedResult.hydration,
+                redness: parsedResult.redness,
+                overall: parsedResult.overall,
+                image_path: img,
+            })
+            .select()
+            .single();
+
+        if (insertError) {
+            //console.error('Database insert error:', insertError);
+            return res
+                .status(500)
+                .json({ error: 'Failed to save analysis results' });
+        }
+
+        res.status(200).json({
+            success: true,
+            result: parsedResult,
         });
+    } catch (err) {
+        //console.error('Unexpected error in analyze face route:', err);
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 

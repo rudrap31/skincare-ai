@@ -32,6 +32,7 @@ const CameraScanScreen = ({ navigation, route }) => {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const { user, refreshUserData } = useAuth();
     const [isServiceError, setIsServiceError] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const [isActive, setIsActive] = useState(true);
     const actionSheetRef = useRef(null);
@@ -40,8 +41,8 @@ const CameraScanScreen = ({ navigation, route }) => {
         const checkPermission = async () => {
             if (!hasPermission) {
                 const result = await requestPermission();
-                }
             }
+        };
 
         checkPermission();
     }, []);
@@ -61,6 +62,12 @@ const CameraScanScreen = ({ navigation, route }) => {
         };
     }, [navigation]);
 
+    const showError = (message, isService = false) => {
+        setErrorMessage(message);
+        setIsServiceError(isService);
+        actionSheetRef.current?.show();
+    };
+
     const processImage = async (imageUri, isFromCamera = false) => {
         try {
             setIsAnalyzing(true);
@@ -69,20 +76,48 @@ const CameraScanScreen = ({ navigation, route }) => {
             const filePath = `${user?.id}/${fileName}`;
 
             // Convert image to base64 and upload
-            const responsePhoto = await fetch(imageUri);
-            const blob = await responsePhoto.blob();
+            let responsePhoto, blob, base64Data, arrayBuffer;
 
-            const base64Data = await new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            try {
+                responsePhoto = await fetch(imageUri);
+                if (!responsePhoto.ok) {
+                    throw new Error('Failed to load image');
+                }
+                blob = await responsePhoto.blob();
+            } catch (error) {
+                //console.error('Image fetch error:', error);
+                throw new Error('Failed to process image file');
+            }
 
-            const arrayBuffer = decode(base64Data);
+            try {
+                base64Data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const result = reader.result;
+                        if (
+                            typeof result === 'string' &&
+                            result.includes(',')
+                        ) {
+                            resolve(result.split(',')[1]);
+                        } else {
+                            reject(new Error('Invalid base64 format'));
+                        }
+                    };
+                    reader.onerror = () =>
+                        reject(new Error('Failed to read image'));
+                    reader.readAsDataURL(blob);
+                });
 
-            const { data: uploadData, error: uploadError } =
-                await supabase.storage
+                arrayBuffer = decode(base64Data);
+            } catch (error) {
+                //console.error('Base64 conversion error:', error);
+                throw new Error('Failed to convert image format');
+            }
+
+            // Upload to Supabase
+            let uploadData;
+            try {
+                const { data, error: uploadError } = await supabase.storage
                     .from('face-images')
                     .upload(filePath, arrayBuffer, {
                         contentType: 'image/jpeg',
@@ -90,59 +125,200 @@ const CameraScanScreen = ({ navigation, route }) => {
                         upsert: false,
                     });
 
-            if (uploadError)
-                throw new Error(
-                    `Failed to upload image: ${uploadError.message}`
-                );
-
-            // Call backend API
-            const response = await fetch(`http://${IP}:5111/api/face`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    img: uploadData.path,
-                    user_id: user.id,
-                }),
-            });
-
-            if (!response.ok) {
-                if (response.status === 400) {
-                    setIsServiceError(false);
-                    actionSheetRef.current?.show();
-                } else if (response.status === 503) {
-                    setIsServiceError(true);
-                    actionSheetRef.current?.show();
+                if (uploadError) {
+                    //console.error('Upload error:', uploadError);
+                    throw new Error('Failed to upload image to server');
                 }
-                setIsAnalyzing(false);
+
+                uploadData = data;
+            } catch (error) {
+                //console.error('Supabase upload error:', error);
+                throw new Error('Image upload failed');
+            }
+
+            // Call backend API with timeout
+            let response;
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+                response = await fetch(`http://${IP}:5111/api/face`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        img: uploadData.path,
+                        user_id: user.id,
+                    }),
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeoutId);
+            } catch (error) {
+                //console.error('Network error:', error);
+                if (error.name === 'AbortError') {
+                    showError(
+                        'Analysis is taking too long. Please try again.',
+                        true
+                    );
+                } else {
+                    showError(
+                        'Network connection failed. Please check your internet connection.',
+                        true
+                    );
+                }
                 return;
             }
-            const analysisData = await response.json();
 
-            refreshUserData();
-            navigation.navigate('ScanResults', {
-                scanImage: imageUri,
-                scanResults: analysisData.result,
-            });
+            // Handle HTTP errors
+            if (!response.ok) {
+                let errorData;
+                try {
+                    errorData = await response.json();
+                } catch (jsonError) {
+                    //console.error('Failed to parse error response:', jsonError);
+                    errorData = { error: 'Unknown server error' };
+                }
+
+                //console.error('API Error:', response.status, errorData);
+
+                switch (response.status) {
+                    case 400:
+                        if (errorData.error?.code === 'INVALID_FACE_IMAGE') {
+                            showError(
+                                "We couldn't detect your face clearly in the photo. This might be due to poor lighting or the photo not showing your face properly.",
+                                false
+                            );
+                        } else {
+                            showError(
+                                'Invalid image or missing data. Please try again.',
+                                false
+                            );
+                        }
+                        break;
+                    case 500:
+                        showError(
+                            'Server error occurred during analysis. Please try again.',
+                            true
+                        );
+                        break;
+                    default:
+                        showError(
+                            `Analysis failed (Error ${response.status}). Please try again.`,
+                            true
+                        );
+                }
+                return;
+            }
+
+            // Parse response
+            let analysisData;
+            try {
+                analysisData = await response.json();
+
+                if (!analysisData.success || !analysisData.result) {
+                    throw new Error('Invalid response format');
+                }
+            } catch (error) {
+                //console.error('Response parsing error:', error);
+                showError(
+                    'Failed to process analysis results. Please try again.',
+                    true
+                );
+                return;
+            }
+
+            // Success - navigate to results
+            try {
+                await refreshUserData();
+                navigation.navigate('ScanResults', {
+                    scanImage: imageUri,
+                    scanResults: analysisData.result,
+                });
+            } catch (error) {
+                //console.error('Navigation error:', error);
+                // Still show results even if refresh fails
+                navigation.navigate('ScanResults', {
+                    scanImage: imageUri,
+                    scanResults: analysisData.result,
+                });
+            }
         } catch (error) {
-            console.error('Error processing image:', error);
-            Alert.alert('Error', 'Failed to process image. Please try again.');
+            //console.error('Error processing image:', error);
+
+            // Show appropriate error message
+            if (error.message.includes('authenticated')) {
+                Alert.alert(
+                    'Authentication Error',
+                    'Please log in and try again.'
+                );
+            } else if (
+                error.message.includes('upload') ||
+                error.message.includes('convert')
+            ) {
+                showError(
+                    'Failed to process image. Please try with a different photo or check your internet connection.',
+                    false
+                );
+            } else {
+                showError(
+                    'An unexpected error occurred. Please try again.',
+                    true
+                );
+            }
         } finally {
             setIsAnalyzing(false);
         }
     };
 
     const takePicture = async () => {
-        if (camera.current) {
+        try {
+            if (!camera.current) {
+                Alert.alert(
+                    'Camera Error',
+                    'Camera is not ready. Please try again.'
+                );
+                return;
+            }
+
             const photo = await camera.current.takePhoto({
                 quality: 90,
                 skipMetadata: true,
             });
+
+            if (!photo?.path) {
+                throw new Error('Failed to capture photo');
+            }
+
             await processImage(`file://${photo.path}`, true);
+        } catch (error) {
+            //console.error('Camera capture error:', error);
+            Alert.alert(
+                'Camera Error',
+                'Failed to take photo. Please try again.'
+            );
         }
     };
 
     const pickImageFromGallery = async () => {
         try {
+            // Request permissions first
+            const { status } =
+                await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert(
+                    'Permission Required',
+                    'We need access to your photo library to select images.',
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Open Settings',
+                            onPress: () => Linking.openSettings(),
+                        },
+                    ]
+                );
+                return;
+            }
+
             let result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ['images'],
                 allowsEditing: true,
@@ -150,12 +326,15 @@ const CameraScanScreen = ({ navigation, route }) => {
                 quality: 1,
             });
 
-            if (!result.canceled) {
+            if (!result.canceled && result.assets?.[0]?.uri) {
                 await processImage(result.assets[0].uri, false);
             }
         } catch (error) {
-            console.error('Error picking image:', error);
-            Alert.alert('Error', 'Failed to pick image. Please try again.');
+            //console.error('Error picking image:', error);
+            Alert.alert(
+                'Gallery Error',
+                'Failed to pick image from gallery. Please try again.'
+            );
         }
     };
 
@@ -183,51 +362,56 @@ const CameraScanScreen = ({ navigation, route }) => {
 
     if (!hasPermission) {
         return (
-          <View className="flex-1 items-center justify-center bg-black px-6">
-            <Text className="text-white text-lg text-center mb-6">
-              Camera permission is required to use this feature
-            </Text>
-      
-            <View className="flex-row gap-1">
-              <TouchableOpacity
-                onPress={handleClose}
-                className="bg-gray-200 px-6 py-3 rounded-xl"
-              >
-                <Text className="text-gray-800 font-semibold text-center">
-                  Cancel
+            <View className="flex-1 items-center justify-center bg-black px-6">
+                <Text className="text-white text-lg text-center mb-6">
+                    Camera permission is required to use this feature
                 </Text>
-              </TouchableOpacity>
-      
-              <TouchableOpacity
-                onPress={() => {
-                  Alert.alert(
-                    'Camera Permission Required',
-                    'We need access to your camera to scan your skin. Please open Settings to enable it.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Open Settings',
-                        onPress: () => Linking.openSettings(),
-                      },
-                    ]
-                  );
-                }}
-                className="bg-primary px-6 py-3 rounded-xl"
-              >
-                <Text className="text-white font-semibold text-center">
-                  Grant Permission
-                </Text>
-              </TouchableOpacity>
+
+                <View className="flex-row gap-1">
+                    <TouchableOpacity
+                        onPress={handleClose}
+                        className="bg-gray-200 px-6 py-3 rounded-xl"
+                    >
+                        <Text className="text-gray-800 font-semibold text-center">
+                            Cancel
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        onPress={() => {
+                            Alert.alert(
+                                'Camera Permission Required',
+                                'We need access to your camera to scan your skin. Please open Settings to enable it.',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Open Settings',
+                                        onPress: () => Linking.openSettings(),
+                                    },
+                                ]
+                            );
+                        }}
+                        className="bg-primary px-6 py-3 rounded-xl"
+                    >
+                        <Text className="text-white font-semibold text-center">
+                            Grant Permission
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-          </View>
         );
-      }
-      
+    }
 
     if (!device) {
         return (
             <View className="flex-1 items-center justify-center bg-black">
                 <Text className="text-white text-lg">Camera not available</Text>
+                <TouchableOpacity
+                    onPress={handleClose}
+                    className="mt-4 bg-gray-600 px-6 py-3 rounded-xl"
+                >
+                    <Text className="text-white font-semibold">Go Back</Text>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -287,13 +471,13 @@ const CameraScanScreen = ({ navigation, route }) => {
 
                 {/* Bottom Section */}
                 <View className="pb-8">
-                    {/* Upgrade Banner */}
-
                     {/* Capture Button */}
                     <View className="items-center mb-6">
                         <TouchableOpacity
                             onPress={takePicture}
+                            disabled={isAnalyzing}
                             className="w-20 h-20 border-4 border-white rounded-full items-center justify-center"
+                            style={{ opacity: isAnalyzing ? 0.5 : 1 }}
                         >
                             <View className="w-16 h-16 bg-white rounded-full" />
                         </TouchableOpacity>
@@ -303,7 +487,9 @@ const CameraScanScreen = ({ navigation, route }) => {
                     <View className="flex-row items-center justify-center space-x-4">
                         <TouchableOpacity
                             onPress={takePicture}
+                            disabled={isAnalyzing}
                             className="bg-white/20 flex-row items-center px-6 py-3 rounded-full flex-1 mx-4"
+                            style={{ opacity: isAnalyzing ? 0.5 : 1 }}
                         >
                             <Icon name="camera" size={20} color="white" />
                             <Text className="text-white font-semibold ml-2 text-center flex-1">
@@ -313,7 +499,9 @@ const CameraScanScreen = ({ navigation, route }) => {
 
                         <TouchableOpacity
                             onPress={pickImageFromGallery}
+                            disabled={isAnalyzing}
                             className="bg-black/50 flex-row items-center px-6 py-3 rounded-full flex-1 mx-4"
+                            style={{ opacity: isAnalyzing ? 0.5 : 1 }}
                         >
                             <Icon name="images" size={20} color="white" />
                             <Text className="text-white font-semibold ml-2 text-center flex-1">
@@ -353,9 +541,10 @@ const CameraScanScreen = ({ navigation, route }) => {
 
                     {/* Description */}
                     <Text className="text-base text-gray-300 text-center mb-6 leading-6">
-                        {isServiceError
-                            ? 'Our face analysis service is temporarily unavailable. Please try again in a few moments.'
-                            : "We couldn't detect your face clearly in the photo. This might be due to poor lighting or the photo not showing your face properly."}
+                        {errorMessage ||
+                            (isServiceError
+                                ? 'Our face analysis service is temporarily unavailable. Please try again in a few moments.'
+                                : "We couldn't detect your face clearly in the photo. This might be due to poor lighting or the photo not showing your face properly.")}
                     </Text>
 
                     {/* Tips Section - Only show for face detection errors */}
