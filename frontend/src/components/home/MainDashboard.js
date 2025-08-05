@@ -132,59 +132,6 @@ const MainDashboard = ({ route }) => {
         }
     };
 
-    // const fetchRecentScans = async () => {
-    //     try {
-    //         setLoadingScans(true);
-    //         const { data: scans, error: scansError } = await supabase
-    //             .from('scanned_faces')
-    //             .select('*')
-    //             .eq('user_id', user.id)
-    //             .order('created_at', { ascending: false })
-    //             .limit(5);
-
-    //         if (scansError) throw scansError;
-
-    //         const scansWithUrls = await Promise.all(
-    //             scans.map(async (scan) => {
-    //                 let signedUrl = null;
-
-    //                 if (scan.image_path) {
-    //                     try {
-    //                         const { data: urlData, error: urlError } =
-    //                             await supabase.storage
-    //                                 .from('face-images')
-    //                                 .createSignedUrl(scan.image_path, 3600);
-
-    //                         if (!urlError && urlData?.signedUrl) {
-    //                             signedUrl = urlData.signedUrl;
-    //                         }
-    //                     } catch (urlError) {
-    //                         console.error(
-    //                             'Exception generating signed URL:',
-    //                             urlError
-    //                         );
-    //                     }
-    //                 }
-
-    //                 return {
-    //                     data: {
-    //                         ...scan,
-    //                         date: new Date(scan.created_at),
-    //                     },
-    //                     image_url: signedUrl,
-    //                 };
-    //             })
-    //         );
-
-    //         setRecentScans(scansWithUrls);
-    //     } catch (error) {
-    //         console.error('Error fetching recent scans:', error);
-    //         setScanError(error.message);
-    //     } finally {
-    //         setLoadingScans(false);
-    //     }
-    // };
-
     // Event Handlers
     const handleScanPress = () => {
         navigation.navigate('ImagePicker');
@@ -197,7 +144,10 @@ const MainDashboard = ({ route }) => {
     const handleRecentScanPress = (scan) => {
         navigation.navigate('ScanResults', {
             scanImage: scan.image_url,
-            scanResults: scan.data,
+            scanResults: {
+                ...scan.data,
+                date: scan.data.date.toISOString(), // Convert Date to string
+            },
         });
     };
 
@@ -262,7 +212,7 @@ const MainDashboard = ({ route }) => {
                 return '#6B7280';
         }
     };
-
+    
     // Render Functions
     const renderRecentScansContent = () => {
         if (dataLoading) {
