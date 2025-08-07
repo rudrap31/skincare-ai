@@ -15,7 +15,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import GradientBackground from '../GradientBackground';
 import Navbar from '../Navbar';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
+import { useAuthActions, useAuthState, useUserData } from '../../context/AuthContext';
 import { getScoreColor } from '../../utils/helpers';
 import RatingCircle from '../RatingCircle';
 import ProductSheet from './ProductSheet';
@@ -25,8 +25,9 @@ const { width } = Dimensions.get('window');
 
 const MainDashboard = ({ route }) => {
     const navigation = useNavigation();
-    const { user, recentScans, scannedProducts, refreshUserData, dataLoading, scanError } = useAuth();
-    const userName = user?.name;
+    const { user } = useAuthState();
+    const { refreshUserData } = useAuthActions();
+    const { recentScans, scannedProducts, dataLoading, scanError } = useUserData();
 
     // Face Analysis State
     const [hasRecentScan, setHasRecentScan] = useState(false);
@@ -179,7 +180,7 @@ const MainDashboard = ({ route }) => {
                 sheetRef.current?.expand();
                 navigation.setParams({ scannedProduct: undefined });
 
-                refreshUserData();
+                refreshUserData({ silent: true });
             }
         }, [user?.id, route.params?.scannedProduct])
     );
@@ -514,7 +515,7 @@ const MainDashboard = ({ route }) => {
                     }}
                 >
                     <Text className="text-white text-2xl font-semibold">
-                        Hey {userName},
+                        Hey {user.name},
                     </Text>
                     <Text className="text-gray-400 text-base">
                         {hasRecentScan

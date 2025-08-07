@@ -69,6 +69,7 @@ const ProductScanner = () => {
     }, []);
 
     const handleClose = () => {
+        if (scanLoading) return;
         setCameraOn(false);
         navigation.goBack();
     };
@@ -449,6 +450,7 @@ const ProductScanner = () => {
                     marginTop: 0,
                     marginBottom: 0,
                 }}
+                onClose={handleRetry}
             >
                 <View className="px-6 py-8 bg-[#1e1e1e] mb-1">
                     {/* Error Icon */}

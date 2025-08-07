@@ -17,7 +17,7 @@ import {
 } from 'react-native-vision-camera';
 import * as ImagePicker from 'expo-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useAuth } from '../../context/AuthContext';
+import { useAuthState, useAuthActions } from '../../context/AuthContext';
 import { supabase } from '../../supabase/supabase';
 import { decode } from 'base64-arraybuffer';
 import { IP } from '../../Constants';
@@ -30,7 +30,8 @@ const CameraScanScreen = ({ navigation, route }) => {
     const device = useCameraDevice('front');
     const { hasPermission, requestPermission, status } = useCameraPermission();
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const { user, refreshUserData } = useAuth();
+    const { user } = useAuthState();
+    const { refreshUserData } = useAuthActions();
     const [isServiceError, setIsServiceError] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
@@ -229,7 +230,7 @@ const CameraScanScreen = ({ navigation, route }) => {
 
             // Success - navigate to results
             try {
-                await refreshUserData();
+                await refreshUserData({ silent: true });
                 navigation.navigate('ScanResults', {
                     scanImage: imageUri,
                     scanResults: analysisData.result,
