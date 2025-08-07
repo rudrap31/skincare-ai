@@ -2,21 +2,17 @@ import React, { useEffect } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
-import { useAuth } from '../context/AuthContext';
 
 const SplashScreen = ({ onFinish }) => {
-    const { user, loading, dataLoading } = useAuth();
 
     useEffect(() => {
         // App initialization
         const timer = setTimeout(() => {
-            if (!(loading || (user && dataLoading))) {
-                onFinish();
-            }
-        }, 2000);
+            onFinish();
+        }, 1500); 
 
         return () => clearTimeout(timer);
-    }, [loading, user, dataLoading, onFinish]);
+    }, [onFinish]);
 
     return (
         <View className="flex-1 justify-center items-center bg-black">
