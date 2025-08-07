@@ -8,16 +8,17 @@ import {
     Alert,
     Linking
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { useAuthState, useAuthActions } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
-import Toast from 'react-native-toast-message';
 import Navbar from './Navbar';
 import ContactUsModal from './ContactUs';
 import EditSkinProfileModal from './EditSkinProfileModal';
 import TermsModal from './TermsModal';
 
 const Profile = () => {
-    const { user, signOut } = useAuth();
+    const { user } = useAuthState();
+    const { signOut } = useAuthActions();
+    
     const [profile, setProfile] = useState({
         name: '',
         skin_type: '',

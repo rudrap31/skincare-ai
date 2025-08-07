@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, ActivityIndicator, Text } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { useAuthActions, useAuthState } from '../context/AuthContext';
 import { supabase } from '../supabase/supabase';
 import StepName from '../components/onboarding/StepName';
 import StepSkinType from '../components/onboarding/StepSkinType';
@@ -8,7 +8,8 @@ import StepSkinConcerns from '../components/onboarding/StepSkinConcerns';
 import GradientBackground from '../components/GradientBackground';
 
 const OnboardingScreen = () => {
-    const { user, refreshOnboardingStatus } = useAuth();
+    const { user } = useAuthState();
+    const { refreshOnboardingStatus } = useAuthActions();
 
     const [step, setStep] = useState(1);
     const [profileData, setProfileData] = useState({
