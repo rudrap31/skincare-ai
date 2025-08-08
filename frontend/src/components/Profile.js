@@ -14,6 +14,7 @@ import Navbar from './Navbar';
 import ContactUsModal from './ContactUs';
 import EditSkinProfileModal from './EditSkinProfileModal';
 import TermsModal from './TermsModal';
+import Toast from 'react-native-toast-message';
 
 const Profile = () => {
     const { user } = useAuthState();
@@ -292,7 +293,18 @@ const Profile = () => {
             />
             <ContactUsModal
                 visible={showContactModal}
-                onClose={() => setShowContactModal(false)}
+                onClose={(show) => {
+                    setShowContactModal(false)
+                    if (show) { 
+                        setTimeout(() => {
+                            Toast.show({
+                                type: 'success',
+                                text1: 'Message sent successfully!',
+                                text2: 'We\'ll get back to you soon',
+                            })
+                        }, 750)
+                    }
+                }}
             />
             <TermsModal 
                 visible={showTermsModal}

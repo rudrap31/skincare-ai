@@ -101,14 +101,8 @@ const ContactUsModal = ({ visible, onClose }) => {
                 return;
             }
 
-            Toast.show({
-                type: 'success',
-                text1: 'Message sent successfully!',
-                text2: 'We\'ll get back to you soon',
-            });
-
             setForm({
-                name: '',
+                name: user?.name || '',
                 email: user?.email || '',
                 subject: '',
                 message: '',
@@ -116,8 +110,8 @@ const ContactUsModal = ({ visible, onClose }) => {
             });
 
             setTimeout(() => {
-                onClose();
-            }, 500);
+                onClose(true);
+            }, 200);
 
         } catch (error) {
             console.error('Submit error:', error);
@@ -133,7 +127,7 @@ const ContactUsModal = ({ visible, onClose }) => {
 
     const handleClose = () => {
         if (loading) return; // Prevent closing while sending
-        onClose();
+        onClose(false);
     };
 
     const CategoryButton = ({ category }) => (
