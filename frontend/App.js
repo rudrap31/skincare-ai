@@ -7,17 +7,20 @@ import "./global.css"
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 export default function App() {
   return (
     <NavigationContainer>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <AuthProvider>
-                <StatusBar style="light" />
-                <AppNavigator />
-            </AuthProvider>
-            <Toast />
-        </GestureHandlerRootView>
+        <ErrorBoundary>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <AuthProvider>
+                    <StatusBar style="light" />
+                    <AppNavigator />
+                    <Toast />
+                </AuthProvider>
+            </GestureHandlerRootView>
+        </ErrorBoundary>
     </NavigationContainer>
   );
 }
