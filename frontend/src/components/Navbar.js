@@ -1,13 +1,13 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { useAuthState } from '../context/AuthContext';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const Navbar = () => {
-    const { user } = useAuth();
+    const { user } = useAuthState();
     const navigation = useNavigation();
 
     return (

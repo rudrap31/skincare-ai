@@ -69,7 +69,7 @@ const EditSkinProfileModal = ({ visible, onClose, profile }) => {
                 Toast.show({
                     type: 'error',
                     text1: 'Error updating profile',
-                    text2: error.message,
+                    text2: 'Please try again later'
                 });
                 console.error(error);
             } else {
