@@ -93,8 +93,9 @@ const ProductScanner = () => {
         onCodeScanned: async (codes) => {
             if (scannedRef.current) return;
             if (!codes?.[0]?.value) return;
-            scannedRef.current = true;
+            if (scanLoading || !cameraOn) return;
 
+            scannedRef.current = true;
             setScanLoading(true);
 
             try {

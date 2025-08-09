@@ -124,6 +124,11 @@ const ChartsPage = ({ route, navigation }) => {
                     // Show all labels
                     for (let i = 0; i < total; i++) {
                         const date = new Date(scans[i].created_at);
+                        // ✅ ADD: Date validation
+                        if (isNaN(date.getTime())) {
+                            labels[i] = 'Invalid';
+                            continue;
+                        }
                         labels[i] = `${date.getMonth() + 1}/${date.getDate()}`;
                     }
                 } else {
@@ -131,8 +136,14 @@ const ChartsPage = ({ route, navigation }) => {
                     for (let i = 0; i < maxLabels; i++) {
                         const floatIndex = (i / (maxLabels - 1)) * (total - 1);
                         const nearestIndex = Math.round(floatIndex);
-                        const date = new Date(scans[nearestIndex].created_at);
-                        labels[nearestIndex] = `${date.getMonth() + 1}/${date.getDate()}`;
+                        
+                        // ✅ ADD: Bounds checking
+                        if (nearestIndex >= 0 && nearestIndex < total) {
+                            const date = new Date(scans[nearestIndex].created_at);
+                            if (!isNaN(date.getTime())) {
+                                labels[nearestIndex] = `${date.getMonth() + 1}/${date.getDate()}`;
+                            }
+                        }
                     }
                 }
             
@@ -148,9 +159,9 @@ const ChartsPage = ({ route, navigation }) => {
                     strokeWidth: 3,
                     color: (opacity = 1) => {
                         const hex = metric.color.replace('#', '');
-                        const r = parseInt(hex.substr(0, 2), 16);
-                        const g = parseInt(hex.substr(2, 2), 16);
-                        const b = parseInt(hex.substr(4, 2), 16);
+                        const r = parseInt(hex.substring(0, 2), 16);
+                        const g = parseInt(hex.substring(2, 4), 16);
+                        const b = parseInt(hex.substring(4, 6), 16);
                         return `rgba(${r}, ${g}, ${b}, ${opacity})`;
                     },
                     withDots: true, // Show dots on actual data points
@@ -177,9 +188,19 @@ const ChartsPage = ({ route, navigation }) => {
     };
 
     useEffect(() => {
-        if (user?.id) {
-            fetchChartData();
-        }
+        let isMounted = true;
+        
+        const loadData = async () => {
+            if (user?.id && isMounted) {
+                await fetchChartData();
+            }
+        };
+        
+        loadData();
+        
+        return () => {
+            isMounted = false; // Prevent state updates after unmount
+        };
     }, [user?.id, timeRange]);
 
     const getCurrentMetricData = () => {
@@ -260,10 +281,9 @@ const ChartsPage = ({ route, navigation }) => {
         return (
             <View className="flex-1">
                 <GradientBackground />
-                <Navbar title="Skin Analytics" />
                 <View className="flex-1 justify-center items-center">
                     <ActivityIndicator size="large" color="#8B5CF6" />
-                    <Text className="text-white mt-4">Loading your analytics...</Text>
+                    <Text className="text-white mt-4 text-lg">Loading your analytics...</Text>
                 </View>
             </View>
         );
@@ -271,9 +291,9 @@ const ChartsPage = ({ route, navigation }) => {
 
     if (error) {
         return (
-            <View className="flex-1">
+            <View className="flex-1 px-6">
                 <GradientBackground />
-                <Navbar title="Skin Analytics" />
+                <Navbar />
                 <View className="flex-1 justify-center items-center px-6">
                     <Icon name="analytics-outline" size={64} color="#6B7280" />
                     <Text className="text-white text-lg font-semibold mt-4 mb-2">
@@ -295,9 +315,9 @@ const ChartsPage = ({ route, navigation }) => {
 
     if (!chartData || Object.keys(chartData).length === 0) {
         return (
-            <View className="flex-1">
+            <View className="flex-1 px-6">
                 <GradientBackground />
-                <Navbar title="Skin Analytics" />
+                <Navbar />
                 <View className="flex-1 justify-center items-center px-6">
                     <Icon name="analytics-outline" size={64} color="#6B7280" />
                     <Text className="text-white text-lg font-semibold mt-4 mb-2">
@@ -328,7 +348,7 @@ const ChartsPage = ({ route, navigation }) => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 100 }}
             >
-                <Navbar/>
+                <Navbar />
                 {/* Header */}
                 <View className="mb-6">
                     <Text className="text-white text-2xl font-bold">

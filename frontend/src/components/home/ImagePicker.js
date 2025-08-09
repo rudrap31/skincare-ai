@@ -85,6 +85,10 @@ const CameraScanScreen = ({ navigation, route }) => {
                     throw new Error('Failed to load image');
                 }
                 blob = await responsePhoto.blob();
+                if (blob.size > 10 * 1024 * 1024) { // 10MB limit
+                    throw new Error('Image file too large');
+                }
+                
             } catch (error) {
                 //console.error('Image fetch error:', error);
                 throw new Error('Failed to process image file');
@@ -278,6 +282,10 @@ const CameraScanScreen = ({ navigation, route }) => {
                     'Camera Error',
                     'Camera is not ready. Please try again.'
                 );
+                return;
+            }
+
+            if (!isActive || scanLoading) {
                 return;
             }
 

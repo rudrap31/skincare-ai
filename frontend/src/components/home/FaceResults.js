@@ -85,8 +85,13 @@ const ScanResultsScreen = ({ navigation, route, scanImage, scanResults }) => {
                 useNativeDriver: false,
             })
         );
-
-        Animated.stagger(100, animations).start();
+    
+        const animationStagger = Animated.stagger(100, animations);
+        animationStagger.start();
+        
+        return () => {
+            animationStagger.stop();
+        };
     }, []);
 
     const handleBack = () => {
