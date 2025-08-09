@@ -33,8 +33,8 @@ export default function AppNavigator() {
             {!user ? (
                 <>
                     <Stack.Screen name="AuthWelcome" component={AuthWelcomeScreen} />
-                    <Stack.Screen name="Login" component={LoginScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-                    <Stack.Screen name="Signup" component={SignupScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+                    <Stack.Screen name="Login" component={LoginScreen} />
+                    <Stack.Screen name="Signup" component={SignupScreen} />
                 </>
             ) : !hasCompletedOnboarding ? (
                 <Stack.Screen name="Onboarding" component={OnboardingScreen} />

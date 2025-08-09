@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Toast from 'react-native-toast-message';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../supabase/supabase';
 
 const SignupScreen = () => {
     const [email, setEmail] = useState('');
@@ -81,22 +82,22 @@ const SignupScreen = () => {
             });
             return;
         }
-
+    
         setIsLoading(true);
         try {
-            const { error } = await signUp({ email: email.trim(), password });
-
-            if (error) throw error;
-
+            const { error: signUpError } = await signUp({ email: email.trim(), password });
+    
+            if (signUpError) throw signUpError;
+    
+            // Always show success message - let users figure out if they need to check existing email
             Toast.show({
                 type: 'success',
                 position: 'top',
-                text1: 'Account Created!',
-                text2: 'Please check your email to verify your account',
-                visibilityTime: 4000,
+                text1: 'Check your email to verify your account.',
+                text2: 'If this email is already verified, please log in.',
+                visibilityTime: 5000,
             });
-
-            navigation.navigate('AuthWelcome');
+    
         } catch (err) {
             Toast.show({
                 type: 'error',
@@ -119,7 +120,7 @@ const SignupScreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 <ScrollView
-                    className="flex-1"
+                    className="flex-1 mt-12"
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Header */}
@@ -268,7 +269,6 @@ const SignupScreen = () => {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
-            <Toast />
         </View>
     );
 };
