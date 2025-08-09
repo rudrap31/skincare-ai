@@ -65,7 +65,7 @@ const LoginScreen = () => {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             >
                 {/* Header */}
-                <View className="pt-14 px-6 flex-row items-center">
+                <View className="pt-14 px-6 flex-row items-center mt-12">
                     <TouchableOpacity
                         onPress={() => navigation.goBack()}
                         className="w-10 h-10 rounded-full bg-white/10 items-center justify-center"
@@ -161,7 +161,6 @@ const LoginScreen = () => {
                     </View>
                 </View>
             </KeyboardAvoidingView>
-            <Toast/>
         </View>
     );
 };

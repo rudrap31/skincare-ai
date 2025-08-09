@@ -38,7 +38,7 @@ const SplashScreen = ({ onFinish }) => {
                 </MaskedView>
 
                 <Text className="text-white/70 text-lg mt-4 text-center">
-                    Your Personal Skincare Assistant Simplified
+                    Your Personal Skincare Simplified
                 </Text>
             </View>
 
