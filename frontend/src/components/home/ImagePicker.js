@@ -88,7 +88,7 @@ const CameraScanScreen = ({ navigation, route }) => {
                 if (blob.size > 10 * 1024 * 1024) { // 10MB limit
                     throw new Error('Image file too large');
                 }
-                
+
             } catch (error) {
                 //console.error('Image fetch error:', error);
                 throw new Error('Failed to process image file');
@@ -285,7 +285,7 @@ const CameraScanScreen = ({ navigation, route }) => {
                 return;
             }
 
-            if (!isActive || scanLoading) {
+            if (!isActive || isAnalyzing) {
                 return;
             }
 
@@ -300,7 +300,7 @@ const CameraScanScreen = ({ navigation, route }) => {
 
             await processImage(`file://${photo.path}`, true);
         } catch (error) {
-            //console.error('Camera capture error:', error);
+            console.log('Camera capture error:', error);
             Alert.alert(
                 'Camera Error',
                 'Failed to take photo. Please try again.'
@@ -311,8 +311,8 @@ const CameraScanScreen = ({ navigation, route }) => {
     const pickImageFromGallery = async () => {
         try {
             // Request permissions first
-            const { status } =
-                await ImagePicker.requestMediaLibraryPermissionsAsync();
+            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission Required',
