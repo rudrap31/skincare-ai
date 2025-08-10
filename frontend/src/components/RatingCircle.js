@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import { getScoreColor } from '../utils/helpers';
 
-const RatingCircle = ({ size, rating }) => {
+const RatingCircle = ({ size, rating, isAnimate = true }) => {
     const [displayedRating, setDisplayedRating] = useState(0);
     const [fillValue, setFillValue] = useState(0);
     const animationRef = useRef(null);
@@ -14,6 +14,12 @@ const RatingCircle = ({ size, rating }) => {
     };
 
     useEffect(() => {
+        if (!isAnimate) {
+            // If no animation, set values immediately
+            setDisplayedRating(rating);
+            setFillValue((rating / 100) * 100);
+            return;
+          }
         if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
         }
@@ -61,7 +67,7 @@ const RatingCircle = ({ size, rating }) => {
                 cancelAnimationFrame(animationRef.current);
             }
         };
-    }, [rating, size]);
+    }, [rating, size, isAnimate]);
 
     return (
         <AnimatedCircularProgress
