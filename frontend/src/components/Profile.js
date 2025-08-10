@@ -285,8 +285,18 @@ const Profile = () => {
             </View>
             <EditSkinProfileModal
                 visible={showEditModal}
-                onClose={() => {setShowEditModal(false)
+                onClose={(show) => {
+                    setShowEditModal(false)
                     fetchProfile()
+                    if (show) { 
+                        setTimeout(() => {
+                            Toast.show({
+                                type: 'success',
+                                text1: 'Profile updated successfully!',
+                                text2: 'Your changes have been saved',
+                            });
+                        }, 750)
+                    }
                 }}
                 profile={profile}
                 

@@ -24,7 +24,7 @@ const TermsModal = ({ visible, onClose }) => {
             visible={visible}
             onRequestClose={handleClose}
         >
-            <Pressable onPress={handleClose} className="flex-1 bg-black/30">
+            <Pressable onPress={handleClose} className="flex-1 ">
                 <View
                     className="absolute bottom-0 w-full bg-neutral-900 p-6 rounded-t-2xl"
                     style={{ height: '40%' }} // Higher modal

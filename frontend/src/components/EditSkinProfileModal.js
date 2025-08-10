@@ -73,15 +73,10 @@ const EditSkinProfileModal = ({ visible, onClose, profile }) => {
                 });
                 console.error(error);
             } else {
-                Toast.show({
-                    type: 'success',
-                    text1: 'Profile updated successfully!',
-                    text2: 'Your changes have been saved',
-                });
 
                 setTimeout(() => {
-                    onClose();
-                }, 500);
+                    onClose(true);
+                }, 200);
             }
         } catch (error) {
             Toast.show({
@@ -97,7 +92,7 @@ const EditSkinProfileModal = ({ visible, onClose, profile }) => {
 
     const handleClose = () => {
         if (saving) return; // Prevent closing while saving
-        onClose();
+        onClose(false);
     };
 
     return (
