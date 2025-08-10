@@ -20,6 +20,7 @@ import { getScoreColor } from '../../utils/helpers';
 import RatingCircle from '../RatingCircle';
 import ProductSheet from './ProductSheet';
 import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import DailyTip from '../DailyTip';
 
 const { width } = Dimensions.get('window');
 
@@ -484,6 +485,8 @@ const MainDashboard = ({ route }) => {
                                                 {product.brand}
                                             </Text>
                                         </View>
+                                        <RatingCircle size={50}
+                                    rating={product.rating} isAnimate={false}/>
                                     </TouchableOpacity>
                                 </Animated.View>
                             ))
@@ -693,21 +696,7 @@ const MainDashboard = ({ route }) => {
                 </Animated.View>
 
                 {/* Daily Tip */}
-                <Animated.View
-                    className="bg-gradient-to-r from-purple-900 to-purple-800 rounded-2xl p-6"
-                    style={{
-                        opacity: fadeAnim,
-                        transform: [{ scale: scaleAnim }],
-                    }}
-                >
-                    <Text className="text-white text-lg font-semibold mb-2">
-                        💡 Daily Tip
-                    </Text>
-                    <Text className="text-purple-200">
-                        Apply sunscreen 15-30 minutes before going outside for
-                        optimal protection against UV damage.
-                    </Text>
-                </Animated.View>
+                <DailyTip/>
             </ScrollView>
 
             {/* Product List Modal */}
