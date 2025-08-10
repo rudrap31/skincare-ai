@@ -15,8 +15,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSCameraUsageDescription": "We need access to your camera to scan your skin.",
-        "NSPhotoLibraryUsageDescription": "We need access to your photos to upload images.",
+        "NSCameraUsageDescription": "This app needs access to your camera to scan your skin.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photos to upload images.",
         "NSPhotoLibraryAddUsageDescription": "This app needs access to save photos to your library.",
         "ITSAppUsesNonExemptEncryption": false
       },
