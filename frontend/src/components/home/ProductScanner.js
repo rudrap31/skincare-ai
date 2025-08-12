@@ -104,7 +104,7 @@ const ProductScanner = () => {
 
                 const user_id = user?.id;
                 const upc = codes[0].value;
-                const res = await fetch(`http://${IP}:5111/api/product`, {
+                const res = await fetch(`http://${IP}/api/product`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ upc, user_id }),
@@ -166,7 +166,7 @@ const ProductScanner = () => {
                         'Analysis is taking too long. Please try again.'
                     );
                 } else {
-                    //console.error('Scan request failed:', error);
+                    console.error('Scan request failed:', error);
                     showError(
                         'network',
                         'Network error. Please check your connection and try again.'

@@ -147,7 +147,7 @@ const CameraScanScreen = ({ navigation, route }) => {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-                response = await fetch(`http://${IP}:5111/api/face`, {
+                response = await fetch(`http://${IP}/api/face`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
