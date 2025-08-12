@@ -14,10 +14,5 @@ app.use('/api/product', rateProductRoute);
 
 app.use('/api/face', analyzeFaceRoute);
 
-app.get("/test", (req, res) => {
-    console.log("Inside /test route");
-    res.send("OK");
-  });
-
 const PORT = process.env.PORT || 5111;
 app.listen(PORT, '0.0.0.0',  () => console.log(`Server running on port ${PORT}`));

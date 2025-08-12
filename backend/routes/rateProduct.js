@@ -84,24 +84,45 @@ router.post('/', async (req, res) => {
         const skin_type = skinTypeData.skin_type;
         const skin_concerns = skinConcernsData.skin_concerns;
 
-        // Fetch product info from UPCItemDB with error handling
-        let upcRes, item;
+        // Fetch product info from BarcodeSpider with error handling
+        let barcodeRes, item;
         try {
-            upcRes = await axios.get(
-                `https://api.upcitemdb.com/prod/trial/lookup?upc=${upc}`,
-                { timeout: 10000 }
+            barcodeRes = await axios.get(
+                `https://api.barcodespider.com/v1/lookup?token=${process.env.BARCODESPIDER_API_KEY}&upc=${upc}`,
+                { 
+                    timeout: 10000,
+                }
             );
-            item = upcRes.data.items?.[0];
+            
+            // Check if the response is successful
+            if (barcodeRes.data.item_response?.code !== 200) {
+                return res.status(404).json({ error: 'Product not found' });
+            }
+            
+            item = barcodeRes.data.item_attributes;
             if (!item) return res.status(404).json({ error: 'Product not found' });
         } catch (err) {
-            //console.error('UPC API error:', err);
+            console.error('BarcodeSpider API error:', err);
             return res.status(500).json({ error: 'Failed to fetch product information' });
         }
 
         const product_name = item.title;
         let image_url;
         try {
-            image_url = (await getValidImage(item.images)) || null;
+            // BarcodeSpider returns a single image URL, but we'll still use the validation function
+            // Create an array to maintain compatibility with existing getValidImage function
+            const images = item.image ? [item.image] : [];
+            
+            // Also check store images as fallback
+            if (barcodeRes.data.stores && barcodeRes.data.stores.length > 0) {
+                barcodeRes.data.stores.forEach(store => {
+                    if (store.image) {
+                        images.push(store.image);
+                    }
+                });
+            }
+            
+            image_url = (await getValidImage(images)) || null;
         } catch (err) {
             //console.error('Image validation error:', err);
             image_url = null; // Continue without image
