@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "skincare-ai",
-    "slug": "skincare-ai",
+    "name": "simplyskin",
+    "slug": "simplyskin",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/lotusicon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/lotusicon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "ios": {
       "supportsTablet": true,
@@ -20,7 +20,7 @@
         "NSPhotoLibraryAddUsageDescription": "This app needs access to save photos to your library.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.anonymous.skincareai"
+      "bundleIdentifier": "com.anonymous.simplyskin"
     },
     "android": {
       "adaptiveIcon": {
@@ -31,7 +31,7 @@
       "permissions": [
         "android.permission.CAMERA"
       ],
-      "package": "com.anonymous.skincareai"
+      "package": "com.anonymous.simplyskin"
     },
     "web": {
       "favicon": "./assets/favicon.png"
