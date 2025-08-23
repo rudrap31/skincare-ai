@@ -20,7 +20,7 @@
         "NSPhotoLibraryAddUsageDescription": "SimplySkin can save analyzed skin photos to your photo library.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.anonymous.simplyskin"
+      "bundleIdentifier": "com.rudrapatel.simplyskin"
     },
     "android": {
       "adaptiveIcon": {
